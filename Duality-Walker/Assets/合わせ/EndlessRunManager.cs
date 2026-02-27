@@ -14,8 +14,7 @@ public sealed class EndlessRunManager : MonoBehaviour
 
     [Header("Runner")]
     [SerializeField] private float autoRunSpeed = 3.2f;
-    [SerializeField] private float runnerDrag = 4f;
-    [SerializeField] private float penaltyImpulse = 4f;
+    [SerializeField] private float penaltyDistance = 0.8f;
 
     [Header("Game Over")]
     [SerializeField] private float leftOutOfScreenThreshold = -0.05f;
@@ -29,7 +28,7 @@ public sealed class EndlessRunManager : MonoBehaviour
     public bool IsGameOver { get; private set; }
 
     private Camera mainCam;
-    private Rigidbody2D runnerRb;
+    private float fixedRunnerY;
 
     private void Awake()
     {
@@ -43,20 +42,8 @@ public sealed class EndlessRunManager : MonoBehaviour
 
         if (autoRunner != null)
         {
-            runnerRb = autoRunner.GetComponent<Rigidbody2D>();
-            if (runnerRb == null)
-            {
-                runnerRb = autoRunner.gameObject.AddComponent<Rigidbody2D>();
-            }
-
-            runnerRb.gravityScale = 0f;
-            runnerRb.drag = runnerDrag;
-            runnerRb.constraints = RigidbodyConstraints2D.FreezeRotation;
-
-            if (autoRunner.GetComponent<AutoRunnerAgent>() == null)
-            {
-                autoRunner.gameObject.AddComponent<AutoRunnerAgent>();
-            }
+            fixedRunnerY = autoRunner.position.y;
+            EnsureRunnerSetup(autoRunner.gameObject);
         }
     }
 
@@ -78,10 +65,10 @@ public sealed class EndlessRunManager : MonoBehaviour
 
     public void ApplyPenalty(float multiplier)
     {
-        if (runnerRb == null) return;
+        if (autoRunner == null) return;
 
-        float impulse = Mathf.Max(0.1f, penaltyImpulse * Mathf.Max(0.2f, multiplier));
-        runnerRb.AddForce(Vector2.left * impulse, ForceMode2D.Impulse);
+        float push = Mathf.Max(0.1f, penaltyDistance * Mathf.Max(0.2f, multiplier));
+        autoRunner.position += Vector3.left * push;
     }
 
     public void AddDistanceBonus(int bonus)
@@ -91,11 +78,12 @@ public sealed class EndlessRunManager : MonoBehaviour
 
     private void DriveRunner()
     {
-        if (runnerRb == null) return;
+        if (autoRunner == null) return;
 
-        Vector2 vel = runnerRb.velocity;
-        vel.x = Mathf.Max(vel.x, autoRunSpeed);
-        runnerRb.velocity = vel;
+        Vector3 pos = autoRunner.position;
+        pos.x += autoRunSpeed * Time.deltaTime;
+        pos.y = fixedRunnerY;
+        autoRunner.position = pos;
     }
 
     private void CheckOutOfScreen()
@@ -142,10 +130,30 @@ public sealed class EndlessRunManager : MonoBehaviour
         sr.sortingOrder = 10;
         go.transform.localScale = new Vector3(0.6f, 0.6f, 1f);
 
-        BoxCollider2D collider = go.AddComponent<BoxCollider2D>();
-        collider.isTrigger = false;
-
+        EnsureRunnerSetup(go);
         return go.transform;
+    }
+
+    private void EnsureRunnerSetup(GameObject runner)
+    {
+        if (runner.GetComponent<BoxCollider2D>() == null)
+        {
+            runner.AddComponent<BoxCollider2D>();
+        }
+
+        Rigidbody2D rb = runner.GetComponent<Rigidbody2D>();
+        if (rb == null)
+        {
+            rb = runner.AddComponent<Rigidbody2D>();
+        }
+
+        rb.bodyType = RigidbodyType2D.Kinematic;
+        rb.simulated = true;
+
+        if (runner.GetComponent<AutoRunnerAgent>() == null)
+        {
+            runner.AddComponent<AutoRunnerAgent>();
+        }
     }
 
     private static Sprite CreateSolidSprite()

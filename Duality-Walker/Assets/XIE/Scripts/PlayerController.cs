@@ -11,6 +11,7 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private Transform playerVisual;    // 拖“玩家显示方块”（可选）
 
     [Header("Move")]
+    [SerializeField] private bool enableManualControl = false;
     [SerializeField] private float moveSpeed = 6f;
     [SerializeField] private bool clampInsideScreen = true;
     [SerializeField] private float screenPadding = 0.3f;
@@ -45,6 +46,12 @@ public class PlayerController : MonoBehaviour
 
     private void Update()
     {
+        if (!enableManualControl)
+        {
+            input = Vector2.zero;
+            return;
+        }
+
         input.x = Input.GetAxisRaw("Horizontal");
         input.y = Input.GetAxisRaw("Vertical");
         input = input.normalized;

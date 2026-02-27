@@ -946,6 +946,7 @@ GameObject:
   - component: {fileID: 1915290177}
   - component: {fileID: 1915290178}
   - component: {fileID: 1915290179}
+  - component: {fileID: 1915290180}
   m_Layer: 0
   m_Name: BOMBSPAWNER
   m_TagString: Untagged
@@ -1028,7 +1029,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1915290174}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b2b6a30aa04f4b8086bcbf519b2714f0, type: 3}
   m_Name: 
@@ -1036,6 +1037,22 @@ MonoBehaviour:
   runManager: {fileID: 1915290177}
   playerController: {fileID: 2017212442}
   clearBonusDistance: 15
+--- !u!114 &1915290180
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1915290174}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0c8f9eb95cc248f0a347aa9fcbf84f71, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  spawnRoot: {fileID: 1915290176}
+  targetPoolSize: 8
+  spawnCenter: {x: -6, y: -4}
+  spawnSpread: {x: 2.4, y: 0.8}
 --- !u!4 &1915290176
 Transform:
   m_ObjectHideFlags: 0
