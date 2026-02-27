@@ -72,7 +72,7 @@ public class PlayerController : MonoBehaviour
         Debug.Log($"[Square] n={n} +{addScore} => score={score}");
 
         // 倒计时 +30 秒
-        Timer.AddTime(30f);
+        //Timer.AddTime(30f);
     }
 
     private Vector2 ClampToScreen(Vector2 worldPos)

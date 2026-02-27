@@ -176,7 +176,7 @@ public sealed class BOMBX : MonoBehaviour
         _isDisappearing = true;
 
         // 倒计时 -15 秒（仅玩家触发时）
-        Timer.AddTime(-15f);
+        //Timer.AddTime(-15f);
 
         // 播放爆炸音效（仅玩家触发）
         PlayExplosionSfx();
