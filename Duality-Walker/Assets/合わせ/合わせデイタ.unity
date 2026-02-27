@@ -943,6 +943,8 @@ GameObject:
   m_Component:
   - component: {fileID: 1915290176}
   - component: {fileID: 1915290175}
+  - component: {fileID: 1915290177}
+  - component: {fileID: 1915290178}
   m_Layer: 0
   m_Name: BOMBSPAWNER
   m_TagString: Untagged
@@ -957,7 +959,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1915290174}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 908a265f372202c43bf00b583548f8e2, type: 3}
   m_Name: 
@@ -977,6 +979,47 @@ MonoBehaviour:
     m_Bits: 4294967295
   _maxSpawnAttemptsPerBomb: 1
   _autoDespawnSeconds: 15
+--- !u!114 &1915290177
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1915290174}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2fd9a0d6786847c98df5e3ac4e9d4f9c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  player: {fileID: 1443610261}
+  scrollingRoot: {fileID: 1915290176}
+  startScrollSpeed: 1.8
+  maxScrollSpeed: 7.5
+  accelerationPerSecond: 0.08
+  leftOutOfScreenThreshold: -0.05
+  gameOverSceneName: GAMEOVERUI
+  distanceMultiplier: 10
+--- !u!114 &1915290178
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1915290174}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1df160c6ce8a46e8be4d0bf23f6bbafa, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  runManager: {fileID: 1915290177}
+  hazardsRoot: {fileID: 1915290176}
+  spawnEverySeconds: 1.2
+  spawnAheadViewportX: 1.12
+  cleanupViewportX: -0.3
+  topYMin: 0.8
+  topYMax: 3.8
+  bottomYMin: -3.8
+  bottomYMax: -0.8
 --- !u!4 &1915290176
 Transform:
   m_ObjectHideFlags: 0
