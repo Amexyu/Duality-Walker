@@ -53,7 +53,7 @@ public sealed class EndlessRunManager : MonoBehaviour
         var rb = player.GetComponent<Rigidbody2D>();
         if (rb != null)
         {
-            rb.velocity = new Vector2(-Mathf.Abs(pushLeft), rb.velocity.y);
+            rb.linearVelocity = new Vector2(-Mathf.Abs(pushLeft), rb.linearVelocity.y);
         }
         else
         {
