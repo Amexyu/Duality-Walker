@@ -13,7 +13,7 @@ public sealed class EndlessRunManager : MonoBehaviour
     [SerializeField] private float accelerationPerSecond = 0.08f;
 
     [Header("Runner")]
-    [SerializeField] private float autoRunSpeed = 3.2f;
+    [SerializeField] private float runnerViewportX = 0.25f;
     [SerializeField] private float penaltyDistance = 0.8f;
 
     [Header("Game Over")]
@@ -59,7 +59,7 @@ public sealed class EndlessRunManager : MonoBehaviour
             scrollingRoot.position += Vector3.left * (CurrentScrollSpeed * Time.deltaTime);
         }
 
-        DriveRunner();
+        KeepRunnerAtViewportX();
         CheckOutOfScreen();
     }
 
@@ -76,12 +76,19 @@ public sealed class EndlessRunManager : MonoBehaviour
         Distance += Mathf.Max(0, bonus);
     }
 
-    private void DriveRunner()
+    private void KeepRunnerAtViewportX()
     {
         if (autoRunner == null) return;
+        if (mainCam == null) mainCam = Camera.main;
+        if (mainCam == null) return;
+
+        float z = -mainCam.transform.position.z;
+        Vector3 target = mainCam.ViewportToWorldPoint(new Vector3(runnerViewportX, 0.5f, z));
+        target.y = fixedRunnerY;
+        target.z = 0f;
 
         Vector3 pos = autoRunner.position;
-        pos.x += autoRunSpeed * Time.deltaTime;
+        pos.x = Mathf.Lerp(pos.x, target.x, 12f * Time.deltaTime);
         pos.y = fixedRunnerY;
         autoRunner.position = pos;
     }

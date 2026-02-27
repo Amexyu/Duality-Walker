@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using UnityEngine;
 
 public class SplitBackground : MonoBehaviour
@@ -8,14 +7,13 @@ public class SplitBackground : MonoBehaviour
     [SerializeField] private int sortingOrder = -100;
     [SerializeField] private float depthFromCamera = 5f;
 
-    [Header("Scroll Marks")]
-    [SerializeField] private int marksPerZone = 12;
-    [SerializeField] private float markWidth = 0.12f;
-    [SerializeField] private float markSpeed = 1.6f;
+    [Header("Subtle Motion")]
+    [SerializeField] private float seamPulseAmplitude = 0.06f;
+    [SerializeField] private float seamPulseSpeed = 1.8f;
 
     private static Sprite solidSprite;
-    private readonly List<Transform> marks = new List<Transform>();
-    private float halfWidth;
+    private Transform seamLine;
+    private float seamBaseX;
 
     private void Start()
     {
@@ -24,25 +22,11 @@ public class SplitBackground : MonoBehaviour
 
     private void Update()
     {
-        if (marks.Count == 0) return;
+        if (seamLine == null) return;
 
-        float loopLeft = -halfWidth - 1f;
-        float loopRight = halfWidth + 1f;
-
-        for (int i = 0; i < marks.Count; i++)
-        {
-            Transform t = marks[i];
-            if (t == null) continue;
-
-            Vector3 p = t.localPosition;
-            p.x -= markSpeed * Time.deltaTime;
-            if (p.x < loopLeft)
-            {
-                p.x = loopRight;
-            }
-
-            t.localPosition = p;
-        }
+        Vector3 p = seamLine.localPosition;
+        p.x = seamBaseX + Mathf.Sin(Time.time * seamPulseSpeed) * seamPulseAmplitude;
+        seamLine.localPosition = p;
     }
 
     private void BuildBackground()
@@ -56,41 +40,32 @@ public class SplitBackground : MonoBehaviour
         float fullHeight = cam.orthographicSize * 2f;
         float fullWidth = fullHeight * cam.aspect;
         float halfHeight = fullHeight * 0.5f;
-        halfWidth = fullWidth * 0.5f;
 
         CreateHalf("TopBackground", topColor, new Vector3(0f, halfHeight * 0.5f, depthFromCamera), new Vector3(fullWidth, halfHeight, 1f));
         CreateHalf("BottomBackground", bottomColor, new Vector3(0f, -halfHeight * 0.5f, depthFromCamera), new Vector3(fullWidth, halfHeight, 1f));
-
-        CreateMarks("TopMarks", new Color(0f, 0f, 0f, 0.12f), halfHeight * 0.5f, halfHeight, fullWidth);
-        CreateMarks("BottomMarks", new Color(1f, 1f, 1f, 0.12f), -halfHeight * 0.5f, halfHeight, fullWidth);
+        CreateSeam(fullWidth);
     }
 
-    private void CreateMarks(string rootName, Color color, float centerY, float zoneHeight, float zoneWidth)
+    private void CreateSeam(float fullWidth)
     {
-        Transform old = transform.Find(rootName);
-        if (old != null)
+        Transform existing = transform.Find("ZoneSeam");
+        if (existing != null)
         {
-            Destroy(old.gameObject);
+            Destroy(existing.gameObject);
         }
 
-        GameObject root = new GameObject(rootName);
-        root.transform.SetParent(transform, false);
+        GameObject seam = new GameObject("ZoneSeam");
+        seam.transform.SetParent(transform, false);
+        seam.transform.localPosition = new Vector3(0f, 0f, depthFromCamera - 0.1f);
+        seam.transform.localScale = new Vector3(fullWidth, 0.06f, 1f);
 
-        for (int i = 0; i < Mathf.Max(1, marksPerZone); i++)
-        {
-            float x = Mathf.Lerp(-zoneWidth * 0.5f, zoneWidth * 0.5f, i / (float)Mathf.Max(1, marksPerZone - 1));
-            GameObject mark = new GameObject($"Mark_{i}");
-            mark.transform.SetParent(root.transform, false);
-            mark.transform.localPosition = new Vector3(x, centerY, depthFromCamera - 0.1f);
-            mark.transform.localScale = new Vector3(markWidth, zoneHeight, 1f);
+        SpriteRenderer sr = seam.AddComponent<SpriteRenderer>();
+        sr.sprite = GetSolidSprite();
+        sr.color = new Color(0.8f, 0.25f, 0.25f, 0.3f);
+        sr.sortingOrder = sortingOrder + 1;
 
-            SpriteRenderer sr = mark.AddComponent<SpriteRenderer>();
-            sr.sprite = GetSolidSprite();
-            sr.color = color;
-            sr.sortingOrder = sortingOrder + 1;
-
-            marks.Add(mark.transform);
-        }
+        seamLine = seam.transform;
+        seamBaseX = seamLine.localPosition.x;
     }
 
     private void CreateHalf(string name, Color color, Vector3 localPosition, Vector3 localScale)

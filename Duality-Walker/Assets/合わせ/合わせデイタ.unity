@@ -993,11 +993,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2fd9a0d6786847c98df5e3ac4e9d4f9c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  player: {fileID: 1443610261}
+  autoRunner: {fileID: 0}
   scrollingRoot: {fileID: 1915290176}
   startScrollSpeed: 1.8
   maxScrollSpeed: 7.5
   accelerationPerSecond: 0.08
+  runnerViewportX: 0.25
+  penaltyDistance: 0.8
   leftOutOfScreenThreshold: -0.05
   gameOverSceneName: GAMEOVERUI
   distanceMultiplier: 10
@@ -1049,10 +1051,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0c8f9eb95cc248f0a347aa9fcbf84f71, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  spawnRoot: {fileID: 1915290176}
+  spawnRoot: {fileID: 0}
   targetPoolSize: 8
-  spawnCenter: {x: -6, y: -4}
-  spawnSpread: {x: 2.4, y: 0.8}
+  viewportCenter: {x: 0.12, y: 0.15}
+  viewportSpread: {x: 0.1, y: 0.06}
 --- !u!4 &1915290176
 Transform:
   m_ObjectHideFlags: 0
