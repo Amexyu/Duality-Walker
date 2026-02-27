@@ -6,74 +6,11 @@ public class Grid : MonoBehaviour
     public int gridSizeY = 15;
     public float cellSize = 1f;
     public Color gridColor = new Color(0.8f, 0.8f, 0.8f, 0.5f);
-    public Material lineMaterial;
-    public Color topBackgroundColor = Color.white;
-    public Color bottomBackgroundColor = Color.black;
-    public float backgroundZ = 1f;
-
-    private static Sprite solidSprite;
+    public Material lineMaterial; 
 
     private void Start()
     {
-        DrawBackground();
         DrawGrid();
-    }
-
-    private void DrawBackground()
-    {
-        float width = gridSizeX * cellSize;
-        float height = gridSizeY * cellSize;
-        float halfHeight = height * 0.5f;
-
-        CreateBackgroundHalf(
-            name: "BackgroundTop",
-            color: topBackgroundColor,
-            centerOffset: new Vector2(width * 0.5f, halfHeight + halfHeight * 0.5f),
-            size: new Vector2(width, halfHeight));
-
-        CreateBackgroundHalf(
-            name: "BackgroundBottom",
-            color: bottomBackgroundColor,
-            centerOffset: new Vector2(width * 0.5f, halfHeight * 0.5f),
-            size: new Vector2(width, halfHeight));
-    }
-
-    private void CreateBackgroundHalf(string name, Color color, Vector2 centerOffset, Vector2 size)
-    {
-        GameObject bgObj = new GameObject(name);
-        bgObj.transform.SetParent(transform);
-        bgObj.transform.position = transform.position + new Vector3(centerOffset.x, centerOffset.y, backgroundZ);
-        bgObj.transform.localScale = new Vector3(size.x, size.y, 1f);
-
-        SpriteRenderer sr = bgObj.AddComponent<SpriteRenderer>();
-        sr.sprite = GetSolidSprite();
-        sr.color = color;
-        sr.sortingOrder = -10;
-    }
-
-    private static Sprite GetSolidSprite()
-    {
-        if (solidSprite != null)
-        {
-            return solidSprite;
-        }
-
-        Texture2D texture = new Texture2D(1, 1, TextureFormat.RGBA32, false)
-        {
-            filterMode = FilterMode.Point,
-            wrapMode = TextureWrapMode.Clamp
-        };
-
-        texture.SetPixel(0, 0, Color.white);
-        texture.Apply();
-
-        solidSprite = Sprite.Create(
-            texture,
-            new Rect(0, 0, 1, 1),
-            new Vector2(0.5f, 0.5f),
-            pixelsPerUnit: 1f);
-
-        return solidSprite;
     }
 
     private void DrawGrid()
