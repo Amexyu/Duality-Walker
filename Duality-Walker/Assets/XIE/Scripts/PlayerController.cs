@@ -1,8 +1,10 @@
-﻿using UnityEngine;
+﻿using System;
+using UnityEngine;
 
 [RequireComponent(typeof(Rigidbody2D))]
 public class PlayerController : MonoBehaviour
 {
+    public static event Action<int> SquareCompletedEvent;
     [Header("Refs")]
     [SerializeField] private Transform groupRoot;       // 拖 GroupRoot（挂 PlayerGroup2D 的那个）
     [SerializeField] private PlayerGroup2D group;       // 拖 GroupRoot 上的 PlayerGroup2D（可不拖，会自动找）
@@ -73,6 +75,8 @@ public class PlayerController : MonoBehaviour
 
         // 倒计时 +30 秒
         Timer.AddTime(30f);
+
+        SquareCompletedEvent?.Invoke(n);
     }
 
     private Vector2 ClampToScreen(Vector2 worldPos)
