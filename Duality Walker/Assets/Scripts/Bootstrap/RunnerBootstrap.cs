@@ -73,7 +73,7 @@ namespace DualityWalker.Bootstrap
         private GameObject CreatePlayer()
         {
             var go = new GameObject("NPC");
-            go.transform.position = new Vector3(0f, 1.2f, 0f);
+            go.transform.position = new Vector3(0f, 1.35f, 0f);
             var renderer = go.AddComponent<SpriteRenderer>();
             renderer.sprite = WorldVisualFactory.Pixel;
             renderer.color = new Color(0.2f, 0.6f, 1f);
@@ -81,10 +81,12 @@ namespace DualityWalker.Bootstrap
 
             var col = go.AddComponent<BoxCollider2D>();
             col.size = Vector2.one;
+            col.offset = new Vector2(0f, -0.08f);
 
             var body = go.AddComponent<Rigidbody2D>();
             body.gravityScale = 2.2f;
             body.constraints = RigidbodyConstraints2D.FreezeRotation;
+            body.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
 
             go.AddComponent<RunnerMotor>();
             go.AddComponent<HazardDetector>();
