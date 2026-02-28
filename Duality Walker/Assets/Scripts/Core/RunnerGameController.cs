@@ -10,15 +10,7 @@ namespace DualityWalker.Core
 
         private void Awake()
         {
-            if (runStateMachine == null)
-            {
-                runStateMachine = FindFirstObjectByType<RunStateMachine>();
-            }
-
-            if (runnerMotor == null)
-            {
-                runnerMotor = FindFirstObjectByType<RunnerMotor>();
-            }
+            TryBindReferences();
         }
 
         private void OnEnable()
@@ -31,8 +23,22 @@ namespace DualityWalker.Core
 
         private void Start()
         {
-            runStateMachine?.SetState(RunState.Ready);
+            TryBindReferences();
             runStateMachine?.SetState(RunState.Running);
+            HandleStateChange(RunState.Running);
+        }
+
+        private void Update()
+        {
+            // 运行时兜底：若初始化顺序导致引用为空，自动重绑。
+            if (runnerMotor == null || runStateMachine == null)
+            {
+                TryBindReferences();
+                if (runStateMachine != null && runStateMachine.CurrentState == RunState.Running)
+                {
+                    HandleStateChange(RunState.Running);
+                }
+            }
         }
 
         private void OnDisable()
@@ -43,11 +49,28 @@ namespace DualityWalker.Core
             }
         }
 
+        private void TryBindReferences()
+        {
+            if (runStateMachine == null)
+            {
+                runStateMachine = FindFirstObjectByType<RunStateMachine>();
+            }
+
+            if (runnerMotor == null)
+            {
+                runnerMotor = FindFirstObjectByType<RunnerMotor>();
+            }
+        }
+
         private void HandleStateChange(RunState state)
         {
             if (runnerMotor == null)
             {
-                return;
+                runnerMotor = FindFirstObjectByType<RunnerMotor>();
+                if (runnerMotor == null)
+                {
+                    return;
+                }
             }
 
             runnerMotor.SetRunning(state == RunState.Running);

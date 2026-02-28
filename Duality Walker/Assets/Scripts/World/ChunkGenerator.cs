@@ -18,6 +18,7 @@ namespace DualityWalker.World
         private float lastChunkEndX;
         private Transform chunkRoot;
         private System.Random random;
+        private int spawnedChunkCount;
 
         private void Start()
         {
@@ -72,12 +73,14 @@ namespace DualityWalker.World
 
             var pattern = patterns.Count > 0 ? patterns[random.Next(patterns.Count)] : null;
             var width = pattern != null ? pattern.width : chunkWidth;
+            var isFirstChunk = spawnedChunkCount == 0;
 
             for (var x = 0; x < width; x++)
             {
-                var pitAtGround = pattern != null
+                var safeLane = isFirstChunk && x < 8;
+                var pitAtGround = !safeLane && (pattern != null
                     ? pattern.GetPit(x, 0)
-                    : random.NextDouble() < 0.12;
+                    : random.NextDouble() < 0.12);
 
                 if (!pitAtGround)
                 {
@@ -86,6 +89,11 @@ namespace DualityWalker.World
                 else
                 {
                     CreateZoneCell(chunk.transform, x, 0, ZoneType.Pit, new Color(0f, 0f, 0f, 0.25f));
+                }
+
+                if (safeLane)
+                {
+                    continue;
                 }
 
                 if (pattern != null)
@@ -104,7 +112,7 @@ namespace DualityWalker.World
                         }
                     }
                 }
-                else if (random.NextDouble() < 0.15)
+                else if (!safeLane && random.NextDouble() < 0.15)
                 {
                     CreateObstacleCell(chunk.transform, x, 1, Color.white);
                     CreateZoneCell(chunk.transform, x, 1, ZoneType.Obstacle, new Color(1f, 1f, 1f, 0.25f));
@@ -113,6 +121,7 @@ namespace DualityWalker.World
 
             activeChunks.Enqueue(chunk);
             lastChunkEndX += width * cellSize;
+            spawnedChunkCount++;
         }
 
         private void CreateGroundCell(Transform parent, int x, int y, Color color)
