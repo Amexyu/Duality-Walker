@@ -12,10 +12,17 @@ namespace DualityWalker.Core
         [SerializeField] private float fixedY = 1.5f;
 
         private Vector3 velocity;
+        private bool snapped;
 
         public void SetTarget(Transform followTarget)
         {
             target = followTarget;
+            SnapToTarget();
+        }
+
+        private void Start()
+        {
+            SnapToTarget();
         }
 
         private void LateUpdate()
@@ -39,6 +46,23 @@ namespace DualityWalker.Core
             }
 
             transform.position = Vector3.SmoothDamp(current, desired, ref velocity, smoothTime);
+        }
+
+        private void SnapToTarget()
+        {
+            if (target == null || snapped)
+            {
+                return;
+            }
+
+            var desired = target.position + offset;
+            if (lockY)
+            {
+                desired.y = fixedY;
+            }
+
+            transform.position = desired;
+            snapped = true;
         }
     }
 }

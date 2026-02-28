@@ -1,4 +1,3 @@
-using DualityWalker.World;
 using UnityEngine;
 
 namespace DualityWalker.GameLoop
@@ -7,6 +6,7 @@ namespace DualityWalker.GameLoop
     public class HazardDetector : MonoBehaviour
     {
         [SerializeField] private RunStateMachine runStateMachine;
+        [SerializeField] private float failY = -6f;
 
         private void Start()
         {
@@ -16,10 +16,10 @@ namespace DualityWalker.GameLoop
             }
         }
 
-        private void OnTriggerEnter2D(Collider2D other)
+        private void Update()
         {
-            var zone = other.GetComponent<ZoneCell>();
-            if (zone != null && !zone.Resolved)
+            // 仅在掉入坑底时失败，避免触碰障碍触发“看起来卡死”。
+            if (transform.position.y < failY)
             {
                 runStateMachine?.SetState(RunState.Failed);
             }

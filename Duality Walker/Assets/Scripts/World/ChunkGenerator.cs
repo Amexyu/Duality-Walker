@@ -35,7 +35,12 @@ namespace DualityWalker.World
             chunkRoot = new GameObject("WorldChunks").transform;
             chunkRoot.SetParent(transform);
 
-            while (lastChunkEndX < spawnAheadDistance)
+            // 从玩家左侧开始铺，避免开局在地形外导致下沉或位移感。
+            var startX = runnerMotor != null ? runnerMotor.transform.position.x - 12f : -12f;
+            var chunkWorldWidth = chunkWidth * cellSize;
+            lastChunkEndX = Mathf.Floor(startX / chunkWorldWidth) * chunkWorldWidth;
+
+            while (lastChunkEndX < (runnerMotor != null ? runnerMotor.transform.position.x + spawnAheadDistance : spawnAheadDistance))
             {
                 SpawnChunk();
             }
@@ -75,26 +80,23 @@ namespace DualityWalker.World
             chunk.transform.SetParent(chunkRoot);
             chunk.transform.position = new Vector3(lastChunkEndX, 0f, 0f);
 
-            var isFirstChunk = spawnedChunkCount == 0;
+            var firstTwoChunks = spawnedChunkCount < 2;
             for (var x = 0; x < chunkWidth; x++)
             {
-                var safeLane = isFirstChunk && x < 10;
+                var safeLane = firstTwoChunks && x < 12;
 
-                var pit = !safeLane && random.NextDouble() < 0.16;
-                var obstacle = !safeLane && !pit && random.NextDouble() < 0.22;
+                var pit = !safeLane && random.NextDouble() < 0.14;
+                var obstacle = !safeLane && !pit && random.NextDouble() < 0.20;
 
-                // 地面（黑区）
                 if (!pit)
                 {
                     CreateGroundCell(chunk.transform, x, 0, Color.black);
                 }
                 else
                 {
-                    // 坑位（黑区生成坑）
                     CreateZoneCell(chunk.transform, x, 0, ZoneType.Pit, new Color(0f, 0f, 0f, 0.20f));
                 }
 
-                // 障碍（白区生成障碍）
                 if (obstacle)
                 {
                     var obstacleHeight = random.Next(1, 3);
@@ -104,7 +106,6 @@ namespace DualityWalker.World
                         CreateZoneCell(chunk.transform, x, h, ZoneType.Obstacle, new Color(1f, 1f, 1f, 0.18f));
                     }
                 }
-
             }
 
             activeChunks.Enqueue(chunk);
@@ -142,6 +143,7 @@ namespace DualityWalker.World
 
             var collider = cell.AddComponent<BoxCollider2D>();
             collider.size = Vector2.one;
+            collider.isTrigger = true; // 避免直接卡死在障碍上
         }
 
         private void CreateZoneCell(Transform parent, int x, int y, ZoneType zoneType, Color color)

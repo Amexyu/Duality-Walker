@@ -26,15 +26,13 @@ namespace DualityWalker.Bootstrap
             _ = new GameObject("HintUI").AddComponent<PlacementHintUI>();
 
             var player = CreatePlayer();
-            var camera = SetupCamera(player.transform);
+            _ = SetupCamera(player.transform);
             _ = SetupBackdrop(player.transform);
 
             var chunkGenerator = new GameObject("ChunkGenerator").AddComponent<ChunkGenerator>();
             chunkGenerator.Configure(player.GetComponent<RunnerMotor>());
 
-            var gameController = new GameObject("GameController").AddComponent<RunnerGameController>();
-            _ = gameController;
-
+            _ = new GameObject("GameController").AddComponent<RunnerGameController>();
             _ = new GameObject("BlockComposer").AddComponent<BlockComposer>();
             _ = CreateAssembly();
             _ = new GameObject("PlacementController").AddComponent<PlacementController>();
@@ -42,7 +40,6 @@ namespace DualityWalker.Bootstrap
             var scoreListener = new GameObject("ScoreListener").AddComponent<ZoneScoreListener>();
             scoreListener.Initialize(zoneResolver, score);
 
-            // 所有对象创建完成后，进入Running。
             runState.SetState(RunState.Running);
         }
 
@@ -73,7 +70,7 @@ namespace DualityWalker.Bootstrap
         private GameObject CreatePlayer()
         {
             var go = new GameObject("NPC");
-            go.transform.position = new Vector3(0f, 1.2f, 0f);
+            go.transform.position = new Vector3(-4f, 0.6f, 0f);
             var renderer = go.AddComponent<SpriteRenderer>();
             renderer.sprite = WorldVisualFactory.Pixel;
             renderer.color = new Color(0.2f, 0.6f, 1f);
@@ -94,12 +91,12 @@ namespace DualityWalker.Bootstrap
         private BlockAssembly CreateAssembly()
         {
             var go = new GameObject("BlockAssembly");
-            go.transform.position = new Vector3(2f, 5f, 0f);
+            go.transform.position = new Vector3(-2f, 5f, 0f);
             var assembly = go.AddComponent<BlockAssembly>();
 
-            var b1 = CreateBlock("Block_Black_1", BlockKind.Black, new Vector3(0, 5, 0));
-            var b2 = CreateBlock("Block_Black_2", BlockKind.Black, new Vector3(1, 5, 0));
-            var w1 = CreateBlock("Block_White_1", BlockKind.White, new Vector3(2, 5, 0));
+            var b1 = CreateBlock("Block_Black_1", BlockKind.Black, new Vector3(-3, 5, 0));
+            var b2 = CreateBlock("Block_Black_2", BlockKind.Black, new Vector3(-2, 5, 0));
+            var w1 = CreateBlock("Block_White_1", BlockKind.White, new Vector3(-1, 5, 0));
 
             assembly.TryAddBlock(b1, Vector2Int.zero);
             assembly.TryAddBlock(b2, Vector2Int.right);
