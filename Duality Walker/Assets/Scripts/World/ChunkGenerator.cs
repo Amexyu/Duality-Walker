@@ -9,7 +9,6 @@ namespace DualityWalker.World
         [SerializeField] private RunnerMotor runnerMotor;
         [SerializeField] private List<ChunkPattern> patterns = new();
         [SerializeField] private float cellSize = 1f;
-        [SerializeField] private int groundHeight = 2;
         [SerializeField] private float spawnAheadDistance = 40f;
         [SerializeField] private float despawnBehindDistance = 20f;
         [SerializeField] private int chunkWidth = 16;
@@ -76,30 +75,34 @@ namespace DualityWalker.World
 
             for (var x = 0; x < width; x++)
             {
-                var hasPit = pattern != null && pattern.GetPit(x, groundHeight);
-                if (!hasPit)
+                var pitAtGround = pattern != null
+                    ? pattern.GetPit(x, 0)
+                    : random.NextDouble() < 0.12;
+
+                if (!pitAtGround)
                 {
                     CreateGroundCell(chunk.transform, x, 0, Color.black);
+                }
+                else
+                {
+                    CreateZoneCell(chunk.transform, x, 0, ZoneType.Pit, new Color(0f, 0f, 0f, 0.25f));
                 }
 
                 if (pattern != null)
                 {
-                    for (var y = 0; y < pattern.height; y++)
+                    for (var y = 1; y < pattern.height; y++)
                     {
                         if (pattern.GetPit(x, y))
                         {
                             CreateZoneCell(chunk.transform, x, y, ZoneType.Pit, new Color(0f, 0f, 0f, 0.25f));
                         }
+
                         if (pattern.GetObstacle(x, y))
                         {
                             CreateObstacleCell(chunk.transform, x, y, Color.white);
                             CreateZoneCell(chunk.transform, x, y, ZoneType.Obstacle, new Color(1f, 1f, 1f, 0.25f));
                         }
                     }
-                }
-                else if (random.NextDouble() < 0.12)
-                {
-                    CreateZoneCell(chunk.transform, x, 0, ZoneType.Pit, new Color(0f, 0f, 0f, 0.25f));
                 }
                 else if (random.NextDouble() < 0.15)
                 {

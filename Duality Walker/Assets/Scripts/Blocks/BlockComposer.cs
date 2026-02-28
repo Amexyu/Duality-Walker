@@ -31,13 +31,7 @@ namespace DualityWalker.Blocks
             }
 
             var world = targetCamera.ScreenToWorldPoint(Input.mousePosition);
-            var hit = Physics2D.Raycast(world, Vector2.zero, 0.01f, blockLayer);
-            if (hit.collider == null)
-            {
-                return;
-            }
-
-            var selected = hit.collider.GetComponent<BlockUnit>();
+            var selected = PickBlockAt(world);
             if (selected == null)
             {
                 return;
@@ -64,6 +58,19 @@ namespace DualityWalker.Blocks
             }
 
             heldBlock = null;
+        }
+
+        private BlockUnit PickBlockAt(Vector3 worldPos)
+        {
+            // blockLayer 未设置时，默认拾取全部层，避免空场景无法点击。
+            if (blockLayer.value == 0)
+            {
+                var overlap = Physics2D.OverlapPoint(worldPos);
+                return overlap != null ? overlap.GetComponent<BlockUnit>() : null;
+            }
+
+            var hit = Physics2D.Raycast(worldPos, Vector2.zero, 0.01f, blockLayer);
+            return hit.collider != null ? hit.collider.GetComponent<BlockUnit>() : null;
         }
 
         private Vector2Int ToCellOffset(Vector3 delta)
