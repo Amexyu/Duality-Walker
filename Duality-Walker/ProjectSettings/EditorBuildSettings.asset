@@ -6,13 +6,13 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: "Assets/\u5408\u308F\u305B/STARTUI.unity"
+    path: Assets/shu/STARTUI.unity
     guid: 3ef534c337632c04a8eb501994ef2ccb
   - enabled: 1
     path: "Assets/\u5408\u308F\u305B/\u5408\u308F\u305B\u30C7\u30A4\u30BF.unity"
     guid: dc3a85e64875cef4da60471bdb70ff8c
   - enabled: 1
-    path: "Assets/\u5408\u308F\u305B/GAMEOVERUI.unity"
+    path: Assets/shu/GAMEOVERUI.unity
     guid: afe9815a6d077d74cbc4aba6b3628846
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 2bcd2660ca9b64942af0de543d8d7100, type: 3}
