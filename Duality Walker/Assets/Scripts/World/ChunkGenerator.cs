@@ -7,11 +7,10 @@ namespace DualityWalker.World
     public class ChunkGenerator : MonoBehaviour
     {
         [SerializeField] private RunnerMotor runnerMotor;
-        [SerializeField] private List<ChunkPattern> patterns = new();
         [SerializeField] private float cellSize = 1f;
-        [SerializeField] private float spawnAheadDistance = 40f;
-        [SerializeField] private float despawnBehindDistance = 20f;
-        [SerializeField] private int chunkWidth = 16;
+        [SerializeField] private float spawnAheadDistance = 45f;
+        [SerializeField] private float despawnBehindDistance = 25f;
+        [SerializeField] private int chunkWidth = 18;
         [SerializeField] private int randomSeed = 2026;
 
         private readonly Queue<GameObject> activeChunks = new();
@@ -19,6 +18,11 @@ namespace DualityWalker.World
         private Transform chunkRoot;
         private System.Random random;
         private int spawnedChunkCount;
+
+        public void Configure(RunnerMotor motor)
+        {
+            runnerMotor = motor;
+        }
 
         private void Start()
         {
@@ -67,60 +71,44 @@ namespace DualityWalker.World
 
         private void SpawnChunk()
         {
-            var chunk = new GameObject($"Chunk_{activeChunks.Count}");
+            var chunk = new GameObject($"Chunk_{spawnedChunkCount}");
             chunk.transform.SetParent(chunkRoot);
             chunk.transform.position = new Vector3(lastChunkEndX, 0f, 0f);
 
-            var pattern = patterns.Count > 0 ? patterns[random.Next(patterns.Count)] : null;
-            var width = pattern != null ? pattern.width : chunkWidth;
             var isFirstChunk = spawnedChunkCount == 0;
-
-            for (var x = 0; x < width; x++)
+            for (var x = 0; x < chunkWidth; x++)
             {
-                var safeLane = isFirstChunk && x < 8;
-                var pitAtGround = !safeLane && (pattern != null
-                    ? pattern.GetPit(x, 0)
-                    : random.NextDouble() < 0.12);
+                var safeLane = isFirstChunk && x < 10;
 
-                if (!pitAtGround)
+                var pit = !safeLane && random.NextDouble() < 0.16;
+                var obstacle = !safeLane && !pit && random.NextDouble() < 0.22;
+
+                // 地面（黑区）
+                if (!pit)
                 {
                     CreateGroundCell(chunk.transform, x, 0, Color.black);
                 }
                 else
                 {
-                    CreateZoneCell(chunk.transform, x, 0, ZoneType.Pit, new Color(0f, 0f, 0f, 0.25f));
+                    // 坑位（黑区生成坑）
+                    CreateZoneCell(chunk.transform, x, 0, ZoneType.Pit, new Color(0f, 0f, 0f, 0.20f));
                 }
 
-                if (safeLane)
+                // 障碍（白区生成障碍）
+                if (obstacle)
                 {
-                    continue;
-                }
-
-                if (pattern != null)
-                {
-                    for (var y = 1; y < pattern.height; y++)
+                    var obstacleHeight = random.Next(1, 3);
+                    for (var h = 1; h <= obstacleHeight; h++)
                     {
-                        if (pattern.GetPit(x, y))
-                        {
-                            CreateZoneCell(chunk.transform, x, y, ZoneType.Pit, new Color(0f, 0f, 0f, 0.25f));
-                        }
-
-                        if (pattern.GetObstacle(x, y))
-                        {
-                            CreateObstacleCell(chunk.transform, x, y, Color.white);
-                            CreateZoneCell(chunk.transform, x, y, ZoneType.Obstacle, new Color(1f, 1f, 1f, 0.25f));
-                        }
+                        CreateObstacleCell(chunk.transform, x, h, Color.white);
+                        CreateZoneCell(chunk.transform, x, h, ZoneType.Obstacle, new Color(1f, 1f, 1f, 0.18f));
                     }
                 }
-                else if (!safeLane && random.NextDouble() < 0.15)
-                {
-                    CreateObstacleCell(chunk.transform, x, 1, Color.white);
-                    CreateZoneCell(chunk.transform, x, 1, ZoneType.Obstacle, new Color(1f, 1f, 1f, 0.25f));
-                }
+
             }
 
             activeChunks.Enqueue(chunk);
-            lastChunkEndX += width * cellSize;
+            lastChunkEndX += chunkWidth * cellSize;
             spawnedChunkCount++;
         }
 
@@ -133,6 +121,7 @@ namespace DualityWalker.World
             var renderer = cell.AddComponent<SpriteRenderer>();
             renderer.sprite = WorldVisualFactory.Pixel;
             renderer.color = color;
+            renderer.sortingOrder = -10;
             cell.transform.localScale = Vector3.one * cellSize;
 
             var collider = cell.AddComponent<BoxCollider2D>();
@@ -143,12 +132,13 @@ namespace DualityWalker.World
         {
             var cell = new GameObject($"Obstacle_{x}_{y}");
             cell.transform.SetParent(parent);
-            cell.transform.localPosition = new Vector3(x * cellSize, y * cellSize, 0f);
+            cell.transform.localPosition = new Vector3(x * cellSize, y * cellSize - 1f, 0f);
             cell.transform.localScale = Vector3.one * cellSize;
 
             var renderer = cell.AddComponent<SpriteRenderer>();
             renderer.sprite = WorldVisualFactory.Pixel;
             renderer.color = color;
+            renderer.sortingOrder = -5;
 
             var collider = cell.AddComponent<BoxCollider2D>();
             collider.size = Vector2.one;
@@ -158,13 +148,13 @@ namespace DualityWalker.World
         {
             var zone = new GameObject($"Zone_{zoneType}_{x}_{y}");
             zone.transform.SetParent(parent);
-            zone.transform.localPosition = new Vector3(x * cellSize, y * cellSize, 0f);
+            zone.transform.localPosition = new Vector3(x * cellSize, y * cellSize - 1f, 0f);
             zone.transform.localScale = Vector3.one * cellSize;
 
             var renderer = zone.AddComponent<SpriteRenderer>();
             renderer.sprite = WorldVisualFactory.Pixel;
             renderer.color = color;
-            renderer.sortingOrder = -1;
+            renderer.sortingOrder = -3;
 
             var cell = zone.AddComponent<ZoneCell>();
             cell.Initialize(zoneType);

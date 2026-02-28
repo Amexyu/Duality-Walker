@@ -20,14 +20,34 @@ namespace DualityWalker.Bootstrap
             }
 
             var runState = new GameObject("RunStateMachine").AddComponent<RunStateMachine>();
-            _ = new GameObject("GameController").AddComponent<RunnerGameController>();
             _ = new GameObject("DifficultyDirector").AddComponent<DifficultyDirector>();
             var score = new GameObject("ScoreSystem").AddComponent<ScoreSystem>();
             var zoneResolver = new GameObject("ZoneResolver").AddComponent<ZoneResolver>();
-            _ = new GameObject("ChunkGenerator").AddComponent<ChunkGenerator>();
             _ = new GameObject("HintUI").AddComponent<PlacementHintUI>();
 
             var player = CreatePlayer();
+            var camera = SetupCamera(player.transform);
+            _ = SetupBackdrop(player.transform);
+
+            var chunkGenerator = new GameObject("ChunkGenerator").AddComponent<ChunkGenerator>();
+            chunkGenerator.Configure(player.GetComponent<RunnerMotor>());
+
+            var gameController = new GameObject("GameController").AddComponent<RunnerGameController>();
+            _ = gameController;
+
+            _ = new GameObject("BlockComposer").AddComponent<BlockComposer>();
+            _ = CreateAssembly();
+            _ = new GameObject("PlacementController").AddComponent<PlacementController>();
+
+            var scoreListener = new GameObject("ScoreListener").AddComponent<ZoneScoreListener>();
+            scoreListener.Initialize(zoneResolver, score);
+
+            // 所有对象创建完成后，进入Running。
+            runState.SetState(RunState.Running);
+        }
+
+        private static GameObject SetupCamera(Transform player)
+        {
             var camera = Camera.main != null ? Camera.main.gameObject : new GameObject("Main Camera");
             if (camera.GetComponent<Camera>() == null)
             {
@@ -39,20 +59,15 @@ namespace DualityWalker.Bootstrap
             cameraComp.backgroundColor = Color.white;
 
             var follow = camera.GetComponent<CameraFollow2D>() ?? camera.AddComponent<CameraFollow2D>();
-            follow.SetTarget(player.transform);
+            follow.SetTarget(player);
+            return camera;
+        }
 
+        private static ScrollingBackdrop SetupBackdrop(Transform player)
+        {
             var backdrop = new GameObject("ScrollingBackdrop").AddComponent<ScrollingBackdrop>();
-            backdrop.SetFollowTarget(player.transform);
-
-            _ = new GameObject("BlockComposer").AddComponent<BlockComposer>();
-            _ = CreateAssembly();
-            _ = new GameObject("PlacementController").AddComponent<PlacementController>();
-
-            var scoreListener = new GameObject("ScoreListener").AddComponent<ZoneScoreListener>();
-            scoreListener.Initialize(zoneResolver, score);
-
-            // 确保玩家在所有系统创建后开始跑。
-            runState.SetState(RunState.Running);
+            backdrop.SetFollowTarget(player);
+            return backdrop;
         }
 
         private GameObject CreatePlayer()
@@ -61,11 +76,12 @@ namespace DualityWalker.Bootstrap
             go.transform.position = new Vector3(0f, 1.2f, 0f);
             var renderer = go.AddComponent<SpriteRenderer>();
             renderer.sprite = WorldVisualFactory.Pixel;
-            renderer.color = new Color(0.3f, 0.7f, 1f);
+            renderer.color = new Color(0.2f, 0.6f, 1f);
             go.transform.localScale = new Vector3(1f, 2f, 1f);
 
             var col = go.AddComponent<BoxCollider2D>();
             col.size = Vector2.one;
+
             var body = go.AddComponent<Rigidbody2D>();
             body.gravityScale = 2.2f;
             body.constraints = RigidbodyConstraints2D.FreezeRotation;

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace DualityWalker.World
@@ -6,12 +7,12 @@ namespace DualityWalker.World
     {
         [SerializeField] private Transform followTarget;
         [SerializeField] private float splitY = 0f;
-        [SerializeField] private float width = 120f;
+        [SerializeField] private float segmentWidth = 30f;
         [SerializeField] private float topHeight = 20f;
         [SerializeField] private float bottomHeight = 30f;
 
-        private Transform topBand;
-        private Transform bottomBand;
+        private readonly List<Transform> topSegments = new();
+        private readonly List<Transform> bottomSegments = new();
 
         public void SetFollowTarget(Transform target)
         {
@@ -20,36 +21,44 @@ namespace DualityWalker.World
 
         private void Start()
         {
-            topBand = CreateBand("TopWhite", Color.white, topHeight, splitY + topHeight * 0.5f, -20);
-            bottomBand = CreateBand("BottomBlack", Color.black, bottomHeight, splitY - bottomHeight * 0.5f, -20);
-            RefreshPosition();
+            // 三段循环，形成无限滚动视觉
+            for (var i = -1; i <= 1; i++)
+            {
+                topSegments.Add(CreateBand($"TopWhite_{i}", Color.white, topHeight, splitY + topHeight * 0.5f, i * segmentWidth, -30));
+                bottomSegments.Add(CreateBand($"BottomBlack_{i}", Color.black, bottomHeight, splitY - bottomHeight * 0.5f, i * segmentWidth, -30));
+            }
         }
 
         private void LateUpdate()
         {
-            RefreshPosition();
-        }
-
-        private void RefreshPosition()
-        {
             var centerX = followTarget != null ? followTarget.position.x : transform.position.x;
-            if (topBand != null)
-            {
-                topBand.position = new Vector3(centerX, topBand.position.y, topBand.position.z);
-            }
+            RecycleSegments(topSegments, centerX);
+            RecycleSegments(bottomSegments, centerX);
+        }
 
-            if (bottomBand != null)
+        private void RecycleSegments(List<Transform> segments, float centerX)
+        {
+            for (var i = 0; i < segments.Count; i++)
             {
-                bottomBand.position = new Vector3(centerX, bottomBand.position.y, bottomBand.position.z);
+                var seg = segments[i];
+                var dx = seg.position.x - centerX;
+                if (dx > segmentWidth)
+                {
+                    seg.position = new Vector3(seg.position.x - segmentWidth * 3f, seg.position.y, seg.position.z);
+                }
+                else if (dx < -segmentWidth)
+                {
+                    seg.position = new Vector3(seg.position.x + segmentWidth * 3f, seg.position.y, seg.position.z);
+                }
             }
         }
 
-        private Transform CreateBand(string name, Color color, float height, float centerY, int order)
+        private Transform CreateBand(string name, Color color, float height, float centerY, float centerX, int order)
         {
             var go = new GameObject(name);
             go.transform.SetParent(transform);
-            go.transform.localScale = new Vector3(width, height, 1f);
-            go.transform.position = new Vector3(0f, centerY, 0f);
+            go.transform.localScale = new Vector3(segmentWidth, height, 1f);
+            go.transform.position = new Vector3(centerX, centerY, 0f);
 
             var renderer = go.AddComponent<SpriteRenderer>();
             renderer.sprite = WorldVisualFactory.Pixel;
