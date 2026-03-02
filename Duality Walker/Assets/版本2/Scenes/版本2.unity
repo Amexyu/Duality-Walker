@@ -355,7 +355,7 @@ MonoBehaviour:
   compositeRebuildInterval: 0.08
   testMode: 1
   testObstacleShapeIndex: 0
-  testPitShapeIndex: 0
+  testPitShapeIndex: 2
   reverseClearMapping: 1
 --- !u!4 &859229876
 Transform:
