@@ -16,6 +16,11 @@ public class BLACKMOVE : MonoBehaviour
     [SerializeField] private float followDownOffsetY = 1.2f; // 玩家在屏幕中稍偏下
     [SerializeField] private float followDownTriggerY = -0.2f;
 
+    [Header("相机起始中线")]
+    [SerializeField] private Transform whiteReference;
+    [SerializeField] private Transform blackReference;
+    [SerializeField] private float startCameraYOffset = 0f;
+
     [Header("相机前推")]
     [SerializeField] private bool keepCameraMovingForward = true;
     [SerializeField] private float cameraForwardSpeed = 3f;
@@ -90,9 +95,18 @@ public class BLACKMOVE : MonoBehaviour
             return;
         }
 
-        baseCamY = mainCamera.transform.position.y;
+        if (blackReference == null)
+        {
+            blackReference = transform;
+        }
+
+        baseCamY = GetStartMidlineY() + startCameraYOffset;
         baseCamZ = mainCamera.transform.position.z;
         cameraForwardX = mainCamera.transform.position.x;
+
+        Vector3 camPos = mainCamera.transform.position;
+        camPos.y = baseCamY;
+        mainCamera.transform.position = camPos;
 
         lastPosX = transform.position.x;
         hasLastPosSample = true;
@@ -159,6 +173,26 @@ public class BLACKMOVE : MonoBehaviour
         mainCamera.transform.position = camPos;
 
         CheckGameOverByOutOfView();
+    }
+
+    private float GetStartMidlineY()
+    {
+        if (blackReference != null && whiteReference != null)
+        {
+            return (blackReference.position.y + whiteReference.position.y) * 0.5f;
+        }
+
+        if (blackReference != null)
+        {
+            return blackReference.position.y;
+        }
+
+        if (whiteReference != null)
+        {
+            return whiteReference.position.y;
+        }
+
+        return transform.position.y;
     }
 
     private void CheckGameOverByOutOfView()
