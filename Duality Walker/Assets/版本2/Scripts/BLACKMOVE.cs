@@ -70,6 +70,13 @@ public class BLACKMOVE : MonoBehaviour
 
     [SerializeField] private float startMoveDelay = 0.02f;
 
+    [Header("开场入场")]
+    [SerializeField] private bool enterFromLeftOnStart = true;
+    [SerializeField] private float enterStartViewportX = -0.08f;
+    [SerializeField] private float enterRunSpeed = 6f;
+    [SerializeField] private float enterTargetOffsetX = 0f;
+    [SerializeField] private bool lockCameraDuringEnter = true;
+
     private enum FrameAnimMode
     {
         None,
@@ -115,6 +122,10 @@ public class BLACKMOVE : MonoBehaviour
     private bool isGameStopped;
     private float uninterruptedMoveTime;
     private bool runByUnblockedTime;
+
+    private bool isEnteringFromLeft;
+    private float enterTargetX;
+    private float fixedCameraXOnEnter;
 
     private void Awake()
     {
@@ -178,6 +189,10 @@ public class BLACKMOVE : MonoBehaviour
         uninterruptedMoveTime = 0f;
         runByUnblockedTime = false;
 
+        isEnteringFromLeft = false;
+        enterTargetX = 0f;
+        fixedCameraXOnEnter = 0f;
+
         if (rb != null)
         {
             rb.simulated = true;
@@ -229,6 +244,43 @@ public class BLACKMOVE : MonoBehaviour
         baseCamY = mainCamera.transform.position.y;
         baseCamZ = mainCamera.transform.position.z;
         cameraTrackX = rb.position.x + lookAheadX;
+
+        BeginEnterFromLeftIfNeeded();
+    }
+
+    private void BeginEnterFromLeftIfNeeded()
+    {
+        if (!enterFromLeftOnStart || mainCamera == null || rb == null)
+        {
+            return;
+        }
+
+        fixedCameraXOnEnter = mainCamera.transform.position.x;
+        enterTargetX = fixedCameraXOnEnter - lookAheadX + enterTargetOffsetX;
+
+        Vector2 p = rb.position;
+        p.x = GetWorldXByViewport(enterStartViewportX);
+        rb.position = p;
+
+        var v = rb.linearVelocity;
+        v.x = 0f;
+        rb.linearVelocity = v;
+
+        isEnteringFromLeft = rb.position.x < enterTargetX;
+        lastX = rb.position.x;
+        cameraTrackX = fixedCameraXOnEnter;
+    }
+
+    private float GetWorldXByViewport(float viewportX)
+    {
+        if (mainCamera == null)
+        {
+            return rb.position.x;
+        }
+
+        float z = Mathf.Abs(mainCamera.transform.position.z);
+        Vector3 world = mainCamera.ViewportToWorldPoint(new Vector3(viewportX, 0.5f, z));
+        return world.x;
     }
 
     private void Update()
@@ -240,7 +292,7 @@ public class BLACKMOVE : MonoBehaviour
 
         float speedXAbs = Mathf.Abs(rb.linearVelocity.x);
         bool isMovingByVelocity = speedXAbs > walkMinSpeedX;
-        bool shouldPlay = isMovingByVelocity || isBlockedThisStep;
+        bool shouldPlay = isEnteringFromLeft || isMovingByVelocity || isBlockedThisStep;
 
         if (!shouldPlay)
         {
@@ -248,20 +300,19 @@ public class BLACKMOVE : MonoBehaviour
             return;
         }
 
-        // 改为：连续未受阻移动达到阈值才进入 Run
-        bool shouldRun = runByUnblockedTime;
-        if (shouldRun)
-        {
-            if (!isPlayingRun || currentFrameAnimMode != FrameAnimMode.Run)
-            {
-                PlayRun();
-            }
-        }
-        else
+        bool shouldWalk = isBlockedThisStep && !isEnteringFromLeft;
+        if (shouldWalk)
         {
             if (!isPlayingRun || currentFrameAnimMode != FrameAnimMode.Walk)
             {
                 PlayWalk();
+            }
+        }
+        else
+        {
+            if (!isPlayingRun || currentFrameAnimMode != FrameAnimMode.Run)
+            {
+                PlayRun();
             }
         }
 
@@ -272,6 +323,37 @@ public class BLACKMOVE : MonoBehaviour
     {
         if (isGameStopped)
         {
+            return;
+        }
+
+        if (isEnteringFromLeft)
+        {
+            float x = rb.position.x;
+            if (x < enterTargetX)
+            {
+                var enterV = rb.linearVelocity;
+                enterV.x = enterRunSpeed;
+                enterV.y = Mathf.Max(enterV.y, -maxFallSpeed);
+                rb.linearVelocity = enterV;
+            }
+            else
+            {
+                Vector2 p = rb.position;
+                p.x = enterTargetX;
+                rb.position = p;
+
+                var enterV = rb.linearVelocity;
+                enterV.x = 0f;
+                rb.linearVelocity = enterV;
+
+                isEnteringFromLeft = false;
+                currentMoveSpeed = moveSpeed;
+                startMoveTimer = Mathf.Max(0f, startMoveDelay);
+                cameraTrackX = rb.position.x + lookAheadX;
+            }
+
+            isBlockedThisStep = false;
+            lastX = rb.position.x;
             return;
         }
 
@@ -297,19 +379,6 @@ public class BLACKMOVE : MonoBehaviour
         {
             unblockedTime += Time.fixedDeltaTime;
         }
-
-        // 连续未受阻移动计时：被阻挡或几乎不动就清零
-        bool isMovingForward = actualMove > 0.0001f;
-        if (!blocked && isMovingForward)
-        {
-            uninterruptedMoveTime += Time.fixedDeltaTime;
-        }
-        else
-        {
-            uninterruptedMoveTime = 0f;
-        }
-
-        runByUnblockedTime = uninterruptedMoveTime >= runAfterUnblockedSeconds;
 
         bool grounded = IsGrounded();
 
@@ -360,11 +429,19 @@ public class BLACKMOVE : MonoBehaviour
         float playerX = rb.position.x;
         float playerY = rb.position.y;
 
-        float followX = playerX + lookAheadX;
-        if (forceCameraForward)
+        float followX;
+        if (isEnteringFromLeft && lockCameraDuringEnter)
         {
-            cameraTrackX += cameraForwardSpeed * Time.deltaTime;
-            followX = Mathf.Max(followX, cameraTrackX);
+            followX = fixedCameraXOnEnter;
+        }
+        else
+        {
+            followX = playerX + lookAheadX;
+            if (forceCameraForward)
+            {
+                cameraTrackX += cameraForwardSpeed * Time.deltaTime;
+                followX = Mathf.Max(followX, cameraTrackX);
+            }
         }
 
         camPos.x = Mathf.SmoothDamp(camPos.x, followX, ref camVelX, cameraSmoothTimeX);

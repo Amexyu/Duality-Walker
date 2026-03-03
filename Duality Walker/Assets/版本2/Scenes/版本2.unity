@@ -920,6 +920,11 @@ MonoBehaviour:
   stopUiSceneName: GAMEOVER1
   disableTimeScaleOnStop: 1
   startMoveDelay: 0.02
+  enterFromLeftOnStart: 1
+  enterStartViewportX: 0.03
+  enterRunSpeed: 3.5
+  enterTargetOffsetX: 0
+  lockCameraDuringEnter: 1
 --- !u!50 &1702622952
 Rigidbody2D:
   serializedVersion: 5
@@ -1011,7 +1016,7 @@ Transform:
   m_GameObject: {fileID: 1702622950}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.817, y: 0.336, z: 0}
+  m_LocalPosition: {x: -0.87, y: 0.53, z: 0}
   m_LocalScale: {x: 3.215, y: 3.0148, z: 2}
   m_ConstrainProportionsScale: 0
   m_Children: []

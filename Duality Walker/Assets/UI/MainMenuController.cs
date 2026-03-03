@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
@@ -13,6 +14,13 @@ public class MainMenuController : MonoBehaviour
     [Header("Scene")]
     [SerializeField] private string gameSceneName = "Game";
     [SerializeField] private string mainMenuSceneName = "MainMenu";
+
+    [Header("Start Intro")]
+    [SerializeField] private STARTUINPC startUiNpc;
+    [SerializeField] private float startSceneDelaySeconds = 2f;
+
+    private bool isStarting;
+    private Coroutine startCoroutine;
 
     private void Awake()
     {
@@ -34,6 +42,33 @@ public class MainMenuController : MonoBehaviour
         if (backButton != null)
         {
             backButton.onClick.AddListener(OnClickBack);
+        }
+    }
+
+    private void OnEnable()
+    {
+        Time.timeScale = 1f;
+        AudioListener.pause = false;
+
+        isStarting = false;
+
+        if (startButton != null)
+        {
+            startButton.gameObject.SetActive(true);
+        }
+
+        if (quitButton != null)
+        {
+            quitButton.gameObject.SetActive(true);
+        }
+    }
+
+    private void OnDisable()
+    {
+        if (startCoroutine != null)
+        {
+            StopCoroutine(startCoroutine);
+            startCoroutine = null;
         }
     }
 
@@ -62,13 +97,42 @@ public class MainMenuController : MonoBehaviour
 
     public void OnClickStart()
     {
+        if (isStarting)
+        {
+            return;
+        }
+
         if (string.IsNullOrEmpty(gameSceneName))
         {
             Debug.LogWarning("[MainMenuController] gameSceneName Îª¿Õ¡£", this);
             return;
         }
 
-        SceneManager.LoadScene(gameSceneName);
+        isStarting = true;
+
+        if (startButton != null)
+        {
+            startButton.gameObject.SetActive(false);
+        }
+
+        if (quitButton != null)
+        {
+            quitButton.gameObject.SetActive(false);
+        }
+
+        if (startUiNpc != null)
+        {
+            startUiNpc.PlayRunAndMoveRight(null);
+        }
+
+        startCoroutine = StartCoroutine(DelayLoadGameScene());
+    }
+
+    private IEnumerator DelayLoadGameScene()
+    {
+        float delay = Mathf.Max(0f, startSceneDelaySeconds);
+        yield return new WaitForSecondsRealtime(delay);
+        LoadGameScene();
     }
 
     public void OnClickRestart()
@@ -100,5 +164,10 @@ public class MainMenuController : MonoBehaviour
 #else
         Application.Quit();
 #endif
+    }
+
+    private void LoadGameScene()
+    {
+        SceneManager.LoadScene(gameSceneName);
     }
 }
