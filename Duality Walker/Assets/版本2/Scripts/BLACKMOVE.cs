@@ -69,6 +69,7 @@ public class BLACKMOVE : MonoBehaviour
     [SerializeField] private bool disableTimeScaleOnStop = true;
 
     [SerializeField] private float startMoveDelay = 0.02f;
+    [SerializeField] private float distanceCountDelay = 1f;
 
     [Header("开场入场")]
     [SerializeField] private bool enterFromLeftOnStart = true;
@@ -126,6 +127,12 @@ public class BLACKMOVE : MonoBehaviour
     private bool isEnteringFromLeft;
     private float enterTargetX;
     private float fixedCameraXOnEnter;
+
+    private float distanceStartX;
+    private float distanceCountTimer;
+    private bool canCountDistance;
+    private float distanceAccumulated;
+    private float distanceLastX;
 
     private void Awake()
     {
@@ -201,6 +208,13 @@ public class BLACKMOVE : MonoBehaviour
         }
 
         lastX = rb != null ? rb.position.x : transform.position.x;
+        distanceStartX = lastX;
+        distanceCountTimer = Mathf.Max(0f, distanceCountDelay);
+        canCountDistance = distanceCountTimer <= 0f;
+        distanceAccumulated = 0f;
+        distanceLastX = lastX;
+        RunDistanceStore.Reset();
+
         startMoveTimer = Mathf.Max(0f, startMoveDelay);
     }
 
@@ -324,6 +338,30 @@ public class BLACKMOVE : MonoBehaviour
         if (isGameStopped)
         {
             return;
+        }
+
+        if (!canCountDistance)
+        {
+            distanceCountTimer -= Time.fixedDeltaTime;
+            if (distanceCountTimer <= 0f)
+            {
+                canCountDistance = true;
+                float currentPosX = rb != null ? rb.position.x : transform.position.x;
+                distanceStartX = currentPosX;
+                distanceLastX = currentPosX;
+                distanceAccumulated = 0f;
+            }
+        }
+        else
+        {
+            float currentPosX = rb != null ? rb.position.x : transform.position.x;
+            float deltaX = currentPosX - distanceLastX;
+            if (deltaX > 0f)
+            {
+                distanceAccumulated += deltaX;
+            }
+
+            distanceLastX = currentPosX;
         }
 
         if (isEnteringFromLeft)
@@ -673,6 +711,9 @@ public class BLACKMOVE : MonoBehaviour
             Debug.LogWarning("[BLACKMOVE] stopUiSceneName 为空。", this);
             return;
         }
+
+        float runDistance = canCountDistance ? Mathf.Max(0f, distanceAccumulated) : 0f;
+        RunDistanceStore.SetLastDistance(runDistance);
 
         isGameStopped = true;
         StopRun();

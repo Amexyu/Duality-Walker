@@ -842,8 +842,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -0.000091553, y: 270.00003}
-  m_SizeDelta: {x: 1920, y: 540}
+  m_AnchoredPosition: {x: -7.276e-12, y: 359}
+  m_SizeDelta: {x: 2560, y: 720}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &986637120
 MonoBehaviour:
@@ -1231,8 +1231,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -0.00012207, y: -271}
-  m_SizeDelta: {x: 1920, y: 540}
+  m_AnchoredPosition: {x: -7.276e-12, y: -361}
+  m_SizeDelta: {x: 2560, y: 720}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1234249873
 MonoBehaviour:
@@ -1674,6 +1674,20 @@ MonoBehaviour:
   mainMenuSceneName: MainMenu
   startUiNpc: {fileID: 739768887}
   startSceneDelaySeconds: 2
+  uiSfxSource: {fileID: 0}
+  defaultButtonClickSfx: {fileID: 0}
+  startClickSfx: {fileID: 8300000, guid: 04fbb0f3b3347c24ba63859e35394f03, type: 3}
+  restartClickSfx: {fileID: 0}
+  backClickSfx: {fileID: 0}
+  quitClickSfx: {fileID: 8300000, guid: 103e4c52c483c114194ff1e907beec02, type: 3}
+  buttonClickVolume: 1.5
+  sceneLoadDelayAfterClick: 0.08
+  startUiBgmSource: {fileID: 0}
+  startUiBgmClip: {fileID: 8300000, guid: bb1de5f3c53913442ac09b6d2229bc68, type: 3}
+  startUiBgmVolume: 0.601
+  loopStartUiBgm: 1
+  gameBgmClip: {fileID: 8300000, guid: 0f0d9dad09d49fc4eb2d85fb3732b3d2, type: 3}
+  gameBgmVolume: 0.8
 --- !u!114 &1666421796
 MonoBehaviour:
   m_ObjectHideFlags: 0

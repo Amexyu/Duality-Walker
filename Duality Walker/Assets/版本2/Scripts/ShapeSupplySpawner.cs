@@ -9,6 +9,13 @@ public class ShapeSupplySpawner : MonoBehaviour
     [SerializeField] private bool enableMouseInput = true;
     [SerializeField] private float inputCooldown = 0.06f;
 
+    [Header("输入音效")]
+    [SerializeField] private AudioSource inputSfxSource;
+    [SerializeField] private AudioClip defaultInputSfx;
+    [SerializeField] private AudioClip shootObstacleSfx; // 上键 / 鼠标左键
+    [SerializeField] private AudioClip shootPitSfx;      // 下键 / 鼠标右键
+    [SerializeField] [Min(0f)] private float inputSfxVolume = 1f;
+
     [Header("提示线（屏幕中线）")]
     [SerializeField] private float fireLineViewportX = 0.5f;
     [SerializeField] private float fireLineWidth = 0.04f;
@@ -40,6 +47,33 @@ public class ShapeSupplySpawner : MonoBehaviour
     [SerializeField] private float clearSnapRadiusInCells = 0.6f;
 
     [SerializeField] private bool followFireLineWhileFlying = true;
+
+    [Header("即时判定（瞄准线）")]
+    [SerializeField] private bool useInstantAimLineResolve = true;
+    [SerializeField] private int aimResolveRangeInCells = 8;
+    [SerializeField] private bool projectileVisualOnly = true;
+
+    [Header("发射物造型")]
+    [SerializeField] private ProjectileShapeMode projectileShapeMode = ProjectileShapeMode.Fixed1x1;
+    [SerializeField] private Vector2Int[] customObstacleProjectileShape = { new Vector2Int(0, 1) };
+    [SerializeField] private Vector2Int[] customPitProjectileShape = { new Vector2Int(0, 0) };
+
+    private enum ProjectileShapeMode
+    {
+        FollowGroundShape, // 跟随 ground 测试/随机逻辑（旧行为）
+        Fixed1x1,          // 固定 1x1
+        Custom             // 使用自定义数组
+    }
+
+    private static readonly Vector2Int[] FixedObstacleShape =
+    {
+        new Vector2Int(0, 1)
+    };
+
+    private static readonly Vector2Int[] FixedPitShape =
+    {
+        new Vector2Int(0, 0)
+    };
 
     private Camera cam;
     private ground worldGround;
@@ -99,6 +133,8 @@ public class ShapeSupplySpawner : MonoBehaviour
             gridOriginX = worldGround.transform.position.x;
         }
 
+        EnsureInputSfxSource();
+
         runtimeSprite = CreatePixelSprite();
         EnsureFireLine();
         UpdateFireLine();
@@ -123,6 +159,7 @@ public class ShapeSupplySpawner : MonoBehaviour
         if (shootObstacle)
         {
             nextShootTime = Time.time + inputCooldown;
+            PlayInputSfx(shootObstacleSfx);
             ShootToObstacle();
             return;
         }
@@ -130,6 +167,7 @@ public class ShapeSupplySpawner : MonoBehaviour
         if (shootPit)
         {
             nextShootTime = Time.time + inputCooldown;
+            PlayInputSfx(shootPitSfx);
             ShootToPit();
         }
     }
@@ -137,6 +175,11 @@ public class ShapeSupplySpawner : MonoBehaviour
     // 上键/左键：白块 -> 填障碍
     private void ShootToObstacle()
     {
+        if (useInstantAimLineResolve)
+        {
+            ResolveByAimLine(clearObstacle: true);
+        }
+
         float x = GetFireLineWorldX();
         float surfaceY = GetSurfaceY();
 
@@ -147,12 +190,18 @@ public class ShapeSupplySpawner : MonoBehaviour
         Vector2Int[] shape = PickBlackShape();
         GameObject projectile = CreateProjectileAssembly("Shot_Obstacle", false, start, shape, false);
 
-        StartCoroutine(TravelResolveAndDisappear(projectile, impact, passEnd, x));
+        bool resolveOnImpact = !useInstantAimLineResolve && !projectileVisualOnly;
+        StartCoroutine(TravelResolveAndDisappear(projectile, impact, passEnd, x, resolveOnImpact));
     }
 
     // 下键/右键：黑块 -> 填坑
     private void ShootToPit()
     {
+        if (useInstantAimLineResolve)
+        {
+            ResolveByAimLine(clearObstacle: false);
+        }
+
         float x = GetFireLineWorldX();
         float surfaceY = GetSurfaceY();
 
@@ -163,10 +212,11 @@ public class ShapeSupplySpawner : MonoBehaviour
         Vector2Int[] shape = PickWhiteShape();
         GameObject projectile = CreateProjectileAssembly("Shot_Pit", true, start, shape, true);
 
-        StartCoroutine(TravelResolveAndDisappear(projectile, impact, passEnd, x));
+        bool resolveOnImpact = !useInstantAimLineResolve && !projectileVisualOnly;
+        StartCoroutine(TravelResolveAndDisappear(projectile, impact, passEnd, x, resolveOnImpact));
     }
 
-    private IEnumerator TravelResolveAndDisappear(GameObject projectile, Vector3 impact, Vector3 passEnd, float lockedX)
+    private IEnumerator TravelResolveAndDisappear(GameObject projectile, Vector3 impact, Vector3 passEnd, float lockedX, bool resolveOnImpact)
     {
         if (projectile == null)
         {
@@ -178,7 +228,7 @@ public class ShapeSupplySpawner : MonoBehaviour
 
         yield return MoveRoot(projectile.transform, projectile.transform.position, impactPos, impactTravelTime, lockedX);
 
-        if (projectile != null)
+        if (resolveOnImpact && projectile != null)
         {
             TryResolveProjectile(projectile);
         }
@@ -248,6 +298,47 @@ public class ShapeSupplySpawner : MonoBehaviour
         {
             worldGround.RefreshCompositeCollider();
         }
+    }
+
+    private bool ResolveByAimLine(bool clearObstacle)
+    {
+        if (worldGround == null)
+        {
+            return false;
+        }
+
+        float x = GetFireLineWorldX();
+        float surfaceY = GetSurfaceY();
+
+        bool isBlackBlock = !clearObstacle;
+        int range = Mathf.Max(1, aimResolveRangeInCells);
+
+        if (clearObstacle)
+        {
+            for (int i = 1; i <= range; i++)
+            {
+                Vector3 p = new Vector3(x, surfaceY + i * cellSize, 0f);
+                if (TryClearWithSnap(p, isBlackBlock))
+                {
+                    worldGround.RefreshCompositeCollider();
+                    return true;
+                }
+            }
+        }
+        else
+        {
+            for (int i = 0; i <= range; i++)
+            {
+                Vector3 p = new Vector3(x, surfaceY - i * cellSize, 0f);
+                if (TryClearWithSnap(p, isBlackBlock))
+                {
+                    worldGround.RefreshCompositeCollider();
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     private bool TryClearWithSnap(Vector3 worldPos, bool isBlackBlock)
@@ -331,29 +422,29 @@ public class ShapeSupplySpawner : MonoBehaviour
                 sr.sortingOrder = projectileSortingOrder;
             }
 
+            // 取消弹射物边框效果
             Transform border = go.transform.Find("Border");
             if (border != null)
             {
-                SpriteRenderer borderSr = border.GetComponent<SpriteRenderer>();
-                if (borderSr != null)
-                {
-                    borderSr.sortingOrder = projectileSortingOrder - 1;
-                }
+                Destroy(border.gameObject);
             }
         }
 
         return root;
     }
 
-    // ====== 替换/新增字段（放在提示线相关字段附近）======
     private Material lineMaterial;
-    private LineRenderer upperFireLine;
-    private LineRenderer lowerFireLine;
+    private LineRenderer upperArrowLine;
+    private LineRenderer lowerArrowLine;
 
-    [SerializeField] private float fireLineExtraYOffsetInCells = 0f; // 在真实分界(半格)基础上的微调
+    [Header("辅助线短箭头造型（仅视觉）")]
+    [SerializeField] private float fireLineExtraYOffsetInCells = 0f;     // 在真实分界(半格)基础上的微调
+    [SerializeField] private float arrowShaftLengthInCells = 1.2f;       // 箭杆长度（只控制箭头大小）
+    [SerializeField] private float arrowHeadLengthInCells = 0.45f;       // 箭头长度
+    [SerializeField] private float arrowHeadHalfWidthMultiplier = 1.8f;  // 箭头半宽 = fireLineWidth * 倍率
+    [SerializeField] private float blackArrowOffsetInCells = 3f;         // 黑箭头整体上移（格）
+    [SerializeField] private float whiteArrowOffsetInCells = 3f;         // 白箭头整体下移（格）
 
-
-    // ====== 用这个替换 EnsureFireLine ======
     private void EnsureFireLine()
     {
         if (lineMaterial == null)
@@ -365,20 +456,20 @@ public class ShapeSupplySpawner : MonoBehaviour
             }
         }
 
-        if (upperFireLine == null)
+        if (upperArrowLine == null)
         {
-            upperFireLine = CreateFireLineRenderer("RhythmFireLine_Upper");
+            upperArrowLine = CreateFireLineRenderer("RhythmArrow_Upper", 5);
         }
 
-        if (lowerFireLine == null)
+        if (lowerArrowLine == null)
         {
-            lowerFireLine = CreateFireLineRenderer("RhythmFireLine_Lower");
+            lowerArrowLine = CreateFireLineRenderer("RhythmArrow_Lower", 5);
         }
 
         RefreshFireLineColors();
     }
 
-    private LineRenderer CreateFireLineRenderer(string name)
+    private LineRenderer CreateFireLineRenderer(string name, int pointCount)
     {
         GameObject go = new GameObject(name);
         go.transform.SetParent(transform, false);
@@ -386,7 +477,7 @@ public class ShapeSupplySpawner : MonoBehaviour
         LineRenderer lr = go.AddComponent<LineRenderer>();
         lr.useWorldSpace = true;
         lr.loop = false;
-        lr.positionCount = 2;
+        lr.positionCount = Mathf.Max(2, pointCount);
         lr.startWidth = fireLineWidth;
         lr.endWidth = fireLineWidth;
         lr.sortingOrder = fireLineSortingOrder;
@@ -401,8 +492,6 @@ public class ShapeSupplySpawner : MonoBehaviour
         return lr;
     }
 
-
-    // ====== 新增：自动反色与区域反转接口 ======
     public void SetAreaSwapped(bool swapped)
     {
         areaSwapped = swapped;
@@ -411,7 +500,7 @@ public class ShapeSupplySpawner : MonoBehaviour
 
     private void RefreshFireLineColors()
     {
-        if (upperFireLine == null || lowerFireLine == null)
+        if (upperArrowLine == null || lowerArrowLine == null)
         {
             return;
         }
@@ -422,10 +511,10 @@ public class ShapeSupplySpawner : MonoBehaviour
         Color upperLine = autoInvertFireLineColor ? InvertKeepAlpha(upperArea) : upperFireLineColor;
         Color lowerLine = autoInvertFireLineColor ? InvertKeepAlpha(lowerArea) : lowerFireLineColor;
 
-        upperFireLine.startColor = upperLine;
-        upperFireLine.endColor = upperLine;
-        lowerFireLine.startColor = lowerLine;
-        lowerFireLine.endColor = lowerLine;
+        upperArrowLine.startColor = upperLine;
+        upperArrowLine.endColor = upperLine;
+        lowerArrowLine.startColor = lowerLine;
+        lowerArrowLine.endColor = lowerLine;
     }
 
     private static Color InvertKeepAlpha(Color c)
@@ -433,11 +522,9 @@ public class ShapeSupplySpawner : MonoBehaviour
         return new Color(1f - c.r, 1f - c.g, 1f - c.b, c.a);
     }
 
-
-    // ====== 用这个替换 UpdateFireLine（防串区）======
     private void UpdateFireLine()
     {
-        if (upperFireLine == null || lowerFireLine == null)
+        if (upperArrowLine == null || lowerArrowLine == null)
         {
             return;
         }
@@ -447,21 +534,35 @@ public class ShapeSupplySpawner : MonoBehaviour
         float x = GetFireLineWorldX();
         float splitY = GetSurfaceY() + 0.5f * cellSize + fireLineExtraYOffsetInCells * cellSize;
 
-        Vector3 top = ViewportToWorld(fireLineViewportX, 1f);
-        Vector3 bottom = ViewportToWorld(fireLineViewportX, 0f);
-
         float gap = splitGapWorld > 0f ? splitGapWorld : Mathf.Max(fireLineWidth * 0.8f, 0.02f);
-        float upperStartY = splitY + gap;
-        float lowerEndY = splitY - gap;
 
-        if (upperStartY > top.y) upperStartY = top.y;
-        if (lowerEndY < bottom.y) lowerEndY = bottom.y;
+        float shaftLen = Mathf.Max(0.05f, arrowShaftLengthInCells * cellSize);
+        float headLen = Mathf.Clamp(arrowHeadLengthInCells * cellSize, 0.02f, shaftLen * 0.9f);
+        float headHalfW = Mathf.Max(fireLineWidth * 0.5f, fireLineWidth * arrowHeadHalfWidthMultiplier);
 
-        upperFireLine.SetPosition(0, new Vector3(x, upperStartY, 0f));
-        upperFireLine.SetPosition(1, new Vector3(x, top.y, 0f));
+        // 上箭头（黑）：整体上移，但箭头朝下（指向中线）
+        float blackOffsetY = Mathf.Max(0f, blackArrowOffsetInCells) * cellSize;
+        float upperTipY = splitY + gap + blackOffsetY;            // 箭尖在下
+        float upperBaseY = upperTipY + shaftLen;                  // 箭杆起点在上
+        float upperHeadBaseY = upperTipY + headLen;               // 箭头两翼在箭尖上方
 
-        lowerFireLine.SetPosition(0, new Vector3(x, bottom.y, 0f));
-        lowerFireLine.SetPosition(1, new Vector3(x, lowerEndY, 0f));
+        upperArrowLine.SetPosition(0, new Vector3(x, upperBaseY, 0f));
+        upperArrowLine.SetPosition(1, new Vector3(x, upperTipY, 0f));
+        upperArrowLine.SetPosition(2, new Vector3(x - headHalfW, upperHeadBaseY, 0f));
+        upperArrowLine.SetPosition(3, new Vector3(x, upperTipY, 0f));
+        upperArrowLine.SetPosition(4, new Vector3(x + headHalfW, upperHeadBaseY, 0f));
+
+        // 下箭头（白）：整体下移，但箭头朝上（指向中线）
+        float whiteOffsetY = Mathf.Max(0f, whiteArrowOffsetInCells) * cellSize;
+        float lowerTipY = splitY - gap - whiteOffsetY;            // 箭尖在上
+        float lowerBaseY = lowerTipY - shaftLen;                  // 箭杆起点在下
+        float lowerHeadBaseY = lowerTipY - headLen;               // 箭头两翼在箭尖下方
+
+        lowerArrowLine.SetPosition(0, new Vector3(x, lowerBaseY, 0f));
+        lowerArrowLine.SetPosition(1, new Vector3(x, lowerTipY, 0f));
+        lowerArrowLine.SetPosition(2, new Vector3(x - headHalfW, lowerHeadBaseY, 0f));
+        lowerArrowLine.SetPosition(3, new Vector3(x, lowerTipY, 0f));
+        lowerArrowLine.SetPosition(4, new Vector3(x + headHalfW, lowerHeadBaseY, 0f));
     }
 
     private float GetFireLineWorldX()
@@ -512,6 +613,16 @@ public class ShapeSupplySpawner : MonoBehaviour
 
     private Vector2Int[] PickBlackShape()
     {
+        if (projectileShapeMode == ProjectileShapeMode.Fixed1x1)
+        {
+            return FixedObstacleShape;
+        }
+
+        if (projectileShapeMode == ProjectileShapeMode.Custom)
+        {
+            return GetValidShapeOrFallback(customObstacleProjectileShape, FixedObstacleShape);
+        }
+
         if (worldGround != null && worldGround.IsTestMode)
         {
             return BlackSupplyShapes[Mathf.Clamp(worldGround.CurrentObstacleShapeIndex, 0, BlackSupplyShapes.Length - 1)];
@@ -522,12 +633,66 @@ public class ShapeSupplySpawner : MonoBehaviour
 
     private Vector2Int[] PickWhiteShape()
     {
+        if (projectileShapeMode == ProjectileShapeMode.Fixed1x1)
+        {
+            return FixedPitShape;
+        }
+
+        if (projectileShapeMode == ProjectileShapeMode.Custom)
+        {
+            return GetValidShapeOrFallback(customPitProjectileShape, FixedPitShape);
+        }
+
         if (worldGround != null && worldGround.IsTestMode)
         {
             return WhiteSupplyShapes[Mathf.Clamp(worldGround.CurrentPitShapeIndex, 0, WhiteSupplyShapes.Length - 1)];
         }
 
         return WhiteSupplyShapes[Random.Range(0, WhiteSupplyShapes.Length)];
+    }
+
+    private static Vector2Int[] GetValidShapeOrFallback(Vector2Int[] shape, Vector2Int[] fallback)
+    {
+        if (shape == null || shape.Length == 0)
+        {
+            return fallback;
+        }
+
+        return shape;
+    }
+
+    private void EnsureInputSfxSource()
+    {
+        if (inputSfxSource == null)
+        {
+            inputSfxSource = GetComponent<AudioSource>();
+        }
+
+        if (inputSfxSource == null)
+        {
+            inputSfxSource = gameObject.AddComponent<AudioSource>();
+        }
+
+        inputSfxSource.playOnAwake = false;
+        inputSfxSource.loop = false;
+        inputSfxSource.spatialBlend = 0f;
+    }
+
+    private void PlayInputSfx(AudioClip clip)
+    {
+        if (inputSfxSource == null)
+        {
+            return;
+        }
+
+        AudioClip finalClip = clip != null ? clip : defaultInputSfx;
+        if (finalClip == null)
+        {
+            return;
+        }
+
+        float volume = Mathf.Max(0f, inputSfxVolume);
+        inputSfxSource.PlayOneShot(finalClip, volume);
     }
 
     private Sprite CreatePixelSprite()

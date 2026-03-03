@@ -32,6 +32,22 @@ public class ground : MonoBehaviour
     [Header("地形间隔")]
     [SerializeField] private int minFlatColumnsBetweenFeatures = 3;
 
+    // 放到 [Header("地形间隔")] 相关字段后面（minFlatColumnsBetweenFeatures 后面）
+    [Header("交替微地形（1凸1凹循环）")]
+    [SerializeField] private bool enableAlternatingMicroPattern = true;
+    [SerializeField] [Range(0f, 1f)] private float alternatingPatternChance = 0.08f;
+    [SerializeField] private int alternatingPatternMinLength = 6;
+    [SerializeField] private int alternatingPatternMaxLength = 14;
+    [SerializeField] private bool alternatingPatternRandomStartType = true;
+
+    [Header("摄像机内前方突发地形（辅助线前方）")]
+    [SerializeField] private bool enableCameraFrontSurprise = true;
+    [SerializeField] [Range(0f, 1f)] private float cameraFrontSurpriseChance = 0.22f;
+    [SerializeField] [Range(0f, 1f)] private float cameraFrontBumpRatio = 0.5f; // 0=全凹陷 1=全凸起
+    [SerializeField] private float assistLineViewportX = 0.5f;                 // 需与辅助线一致
+    [SerializeField] private int cameraFrontStartOffsetColumns = 2;            // 辅助线前方起始列偏移
+    [SerializeField] private int cameraFrontRightPaddingColumns = 2;           // 右边界保留列数
+
     [Header("贴地修正（用于消除角色与地面细缝）")]
     [SerializeField] private float surfaceSnapTolerance = 0.01f;
 
@@ -94,6 +110,12 @@ public class ground : MonoBehaviour
     private Vector2Int[] activeFeatureCells;
     private int activeFeatureStartX;
     private int activeFeatureEndX;
+
+    // 交替微地形运行时状态
+    private bool activeAlternatingPattern;
+    private int alternatingPatternStartX;
+    private int alternatingPatternEndX;
+    private bool alternatingPatternStartWithBump;
 
     // 障碍形状（y>=1，放在白区）
     private static readonly Vector2Int[][] ObstacleShapes =
@@ -291,6 +313,7 @@ public class ground : MonoBehaviour
         featureStartColumn = playerCol + Mathf.Max(1, featureStartSafeColumns);
     }
 
+    // 替换原 GenerateColumn
     private void GenerateColumn(int xIndex)
     {
         TryStartFeatureAtColumn(xIndex);
@@ -315,9 +338,22 @@ public class ground : MonoBehaviour
             SpawnOrReplaceBlock(root.transform, pos, Color.white, false, "White");
         }
 
-        ApplyFeatureToColumn(root.transform, xIndex, worldX);
+        if (activeAlternatingPattern)
+        {
+            ApplyAlternatingPatternToColumn(root.transform, xIndex, worldX);
+        }
+        else
+        {
+            ApplyFeatureToColumn(root.transform, xIndex, worldX);
+        }
 
         spawnedColumns.Enqueue(new ColumnRecord { xIndex = xIndex, root = root });
+
+        if (activeAlternatingPattern && xIndex >= alternatingPatternEndX)
+        {
+            activeAlternatingPattern = false;
+            featureCooldown = minFlatColumnsBetweenFeatures;
+        }
 
         if (activeFeatureType != FeatureType.None && xIndex >= activeFeatureEndX)
         {
@@ -327,6 +363,7 @@ public class ground : MonoBehaviour
         }
     }
 
+    // 替换原 TryStartFeatureAtColumn
     private void TryStartFeatureAtColumn(int xIndex)
     {
         if (!featureUnlocked || xIndex < featureStartColumn)
@@ -334,7 +371,7 @@ public class ground : MonoBehaviour
             return;
         }
 
-        if (activeFeatureType != FeatureType.None)
+        if (activeAlternatingPattern || activeFeatureType != FeatureType.None)
         {
             return;
         }
@@ -342,6 +379,18 @@ public class ground : MonoBehaviour
         if (featureCooldown > 0)
         {
             featureCooldown--;
+            return;
+        }
+
+        // 先尝试“摄像机内、辅助线前方”的突发地形
+        if (TryStartCameraFrontSurpriseAtColumn(xIndex))
+        {
+            return;
+        }
+
+        if (enableAlternatingMicroPattern && Random.value < alternatingPatternChance)
+        {
+            StartAlternatingPattern(xIndex);
             return;
         }
 
@@ -359,12 +408,111 @@ public class ground : MonoBehaviour
         }
     }
 
+    // 新增方法：放在 TryStartFeatureAtColumn 后面
+    private bool TryStartCameraFrontSurpriseAtColumn(int xIndex)
+    {
+        if (!enableCameraFrontSurprise)
+        {
+            return false;
+        }
+
+        Camera cam = Camera.main;
+        if (cam == null)
+        {
+            return false;
+        }
+
+        float z = -cam.transform.position.z;
+        float assistX = cam.ViewportToWorldPoint(new Vector3(assistLineViewportX, 0.5f, z)).x;
+        float rightX = cam.ViewportToWorldPoint(new Vector3(1f, 0.5f, z)).x;
+
+        float minX = assistX + Mathf.Max(0, cameraFrontStartOffsetColumns) * blockSize;
+        float maxX = rightX - Mathf.Max(0, cameraFrontRightPaddingColumns) * blockSize;
+        if (maxX <= minX)
+        {
+            return false;
+        }
+
+        float worldX = ColumnToWorldX(xIndex);
+        if (worldX < minX || worldX > maxX)
+        {
+            return false;
+        }
+
+        if (Random.value > cameraFrontSurpriseChance)
+        {
+            return false;
+        }
+
+        bool placeBump = Random.value < cameraFrontBumpRatio;
+        if (placeBump)
+        {
+            StartFeature(xIndex, FeatureType.Obstacle, PickObstacleShape());
+        }
+        else
+        {
+            StartFeature(xIndex, FeatureType.Pit, PickPitShape());
+        }
+
+        return true;
+    }
+
     private void StartFeature(int startX, FeatureType type, Vector2Int[] shape)
     {
         activeFeatureType = type;
         activeFeatureCells = shape;
         activeFeatureStartX = startX;
         activeFeatureEndX = startX + GetShapeWidth(shape) - 1;
+    }
+
+    // 新增到 StartFeature(...) 后面即可
+    private void StartAlternatingPattern(int startX)
+    {
+        activeAlternatingPattern = true;
+        alternatingPatternStartX = startX;
+
+        int minLen = Mathf.Max(2, alternatingPatternMinLength);
+        int maxLen = Mathf.Max(minLen, alternatingPatternMaxLength);
+        int length = Random.Range(minLen, maxLen + 1);
+
+        alternatingPatternEndX = startX + length - 1;
+
+        if (alternatingPatternRandomStartType)
+        {
+            alternatingPatternStartWithBump = Random.value < 0.5f;
+        }
+        else
+        {
+            alternatingPatternStartWithBump = true;
+        }
+
+        activeFeatureType = FeatureType.None;
+        activeFeatureCells = null;
+    }
+
+    private void ApplyAlternatingPatternToColumn(Transform root, int xIndex, float worldX)
+    {
+        int local = xIndex - alternatingPatternStartX;
+        if (local < 0 || xIndex > alternatingPatternEndX)
+        {
+            return;
+        }
+
+        bool isEven = (local % 2) == 0;
+        bool placeBump = isEven ? alternatingPatternStartWithBump : !alternatingPatternStartWithBump;
+
+        if (placeBump)
+        {
+            // 1格凸起（分界线上方）
+            Vector3 bumpPos = new(worldX, (baseSurfaceUnits + 1) * blockSize, 0f);
+            SpawnOrReplaceBlock(root, bumpPos, Color.black, true, "Obstacle");
+        }
+        else
+        {
+            // 1格凹陷（分界线位置）
+            Vector3 pitPos = new(worldX, baseSurfaceUnits * blockSize, 0f);
+            SpawnOrReplaceBlock(root, pitPos, Color.white, false, "Pit");
+        }
     }
 
     private int GetShapeWidth(Vector2Int[] shape)
