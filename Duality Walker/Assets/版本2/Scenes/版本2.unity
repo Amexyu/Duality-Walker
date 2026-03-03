@@ -153,9 +153,15 @@ MonoBehaviour:
   enableMouseInput: 1
   inputCooldown: 0.06
   fireLineViewportX: 0.5
-  fireLineColor: {r: 1, g: 0.9, b: 0.2, a: 1}
   fireLineWidth: 0.04
   fireLineSortingOrder: 200
+  autoInvertFireLineColor: 1
+  upperAreaBaseColor: {r: 1, g: 1, b: 1, a: 1}
+  lowerAreaBaseColor: {r: 0, g: 0, b: 0, a: 1}
+  areaSwapped: 0
+  upperFireLineColor: {r: 0, g: 0, b: 0, a: 1}
+  lowerFireLineColor: {r: 1, g: 1, b: 1, a: 1}
+  splitGapWorld: -1
   launchOffsetInCells: 4
   impactTravelTime: 0.18
   passTravelTime: 0.1
@@ -164,6 +170,7 @@ MonoBehaviour:
   snapToNearestFeatureCell: 1
   clearSnapRadiusInCells: 0.6
   followFireLineWhileFlying: 1
+  fireLineExtraYOffsetInCells: 0
 --- !u!4 &63060443
 Transform:
   m_ObjectHideFlags: 0
@@ -351,6 +358,11 @@ MonoBehaviour:
   obstacleBorderColor: {r: 1, g: 1, b: 1, a: 1}
   pitBorderColor: {r: 0, g: 0, b: 0, a: 1}
   filledPitBorderColor: {r: 1, g: 1, b: 1, a: 1}
+  useObstacleFillColorTransition: 1
+  obstacleFillColorTransitionDuration: 0.2
+  fadeOutObstacleBorderOnFill: 1
+  usePitFillColorTransition: 1
+  pitFillColorTransitionDuration: 0.2
 --- !u!4 &859229876
 Transform:
   m_ObjectHideFlags: 0
@@ -890,7 +902,7 @@ MonoBehaviour:
   useUnscaledTime: 1
   runMinSpeedX: 0.05
   killLineTag: KillLine
-  stopUiSceneName: StopUI
+  stopUiSceneName: GAMEOVER1
   disableTimeScaleOnStop: 1
 --- !u!50 &1702622952
 Rigidbody2D:

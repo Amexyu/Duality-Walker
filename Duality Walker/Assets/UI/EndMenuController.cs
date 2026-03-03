@@ -12,6 +12,8 @@ public class EndMenuController : MonoBehaviour
     [SerializeField] private string gameSceneName = "Game";
     [SerializeField] private string mainMenuSceneName = "MainMenu";
 
+    private bool isLoading;
+
     private void Awake()
     {
         if (restartButton != null)
@@ -40,23 +42,32 @@ public class EndMenuController : MonoBehaviour
 
     public void OnClickRestart()
     {
-        if (string.IsNullOrEmpty(gameSceneName))
-        {
-            Debug.LogWarning("[EndMenuController] gameSceneName Îª¿Õ¡£", this);
-            return;
-        }
-
-        SceneManager.LoadScene(gameSceneName);
+        LoadSceneSafe(gameSceneName, "gameSceneName");
     }
 
     public void OnClickBack()
     {
-        if (string.IsNullOrEmpty(mainMenuSceneName))
+        LoadSceneSafe(mainMenuSceneName, "mainMenuSceneName");
+    }
+
+    private void LoadSceneSafe(string sceneName, string fieldName)
+    {
+        if (isLoading)
         {
-            Debug.LogWarning("[EndMenuController] mainMenuSceneName Îª¿Õ¡£", this);
             return;
         }
 
-        SceneManager.LoadScene(mainMenuSceneName);
+        if (string.IsNullOrEmpty(sceneName))
+        {
+            Debug.LogWarning("[EndMenuController] " + fieldName + " Îª¿Õ¡£", this);
+            return;
+        }
+
+        isLoading = true;
+
+        Time.timeScale = 1f;
+        AudioListener.pause = false;
+
+        SceneManager.LoadScene(sceneName);
     }
 }

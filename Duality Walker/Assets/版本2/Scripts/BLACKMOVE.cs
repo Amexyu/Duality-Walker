@@ -61,6 +61,8 @@ public class BLACKMOVE : MonoBehaviour
     [SerializeField] private string stopUiSceneName = "StopUI";
     [SerializeField] private bool disableTimeScaleOnStop = true;
 
+    [SerializeField] private float startMoveDelay = 0.02f;
+
     private Rigidbody2D rb;
     private Camera mainCamera;
     private Collider2D bodyCol;
@@ -74,6 +76,7 @@ public class BLACKMOVE : MonoBehaviour
     private float currentMoveSpeed;
     private float unblockedTime;
     private float lastX;
+    private float startMoveTimer;
 
     private int animSpeedXHash;
     private int animSpeedYHash;
@@ -149,8 +152,29 @@ public class BLACKMOVE : MonoBehaviour
         ApplyPlayerSortingOrder();
     }
 
+    private void ResetRuntimeState()
+    {
+        isGameStopped = false;
+        isBlockedThisStep = false;
+        unblockedTime = 0f;
+        currentMoveSpeed = moveSpeed;
+
+        if (rb != null)
+        {
+            rb.simulated = true;
+            rb.linearVelocity = Vector2.zero;
+            rb.angularVelocity = 0f;
+        }
+
+        lastX = rb != null ? rb.position.x : transform.position.x;
+        startMoveTimer = Mathf.Max(0f, startMoveDelay);
+    }
+
     private void OnEnable()
     {
+        SceneManager.sceneLoaded += OnSceneLoaded;
+        ResetRuntimeState();
+
         if (useRunFrameAnimation)
         {
             PlayRun();
@@ -159,7 +183,20 @@ public class BLACKMOVE : MonoBehaviour
 
     private void OnDisable()
     {
+        SceneManager.sceneLoaded -= OnSceneLoaded;
         StopRun();
+    }
+
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        if (scene.name == stopUiSceneName)
+        {
+            return;
+        }
+
+        Time.timeScale = 1f;
+        AudioListener.pause = false;
+        ResetRuntimeState();
     }
 
     private void Start()
@@ -204,6 +241,13 @@ public class BLACKMOVE : MonoBehaviour
     {
         if (isGameStopped)
         {
+            return;
+        }
+
+        if (startMoveTimer > 0f)
+        {
+            startMoveTimer -= Time.fixedDeltaTime;
+            lastX = rb.position.x;
             return;
         }
 
@@ -456,6 +500,12 @@ public class BLACKMOVE : MonoBehaviour
             return;
         }
 
+        if (string.IsNullOrEmpty(stopUiSceneName))
+        {
+            Debug.LogWarning("[BLACKMOVE] stopUiSceneName Îª¿Õ¡£", this);
+            return;
+        }
+
         isGameStopped = true;
         StopRun();
 
@@ -467,6 +517,6 @@ public class BLACKMOVE : MonoBehaviour
             Time.timeScale = 0f;
         }
 
-        SceneManager.LoadScene(stopUiSceneName);
+        SceneManager.LoadScene(stopUiSceneName, LoadSceneMode.Single);
     }
 }
