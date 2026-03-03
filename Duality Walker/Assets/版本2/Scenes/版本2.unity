@@ -901,6 +901,21 @@ MonoBehaviour:
   runFps: 20
   useUnscaledTime: 1
   runMinSpeedX: 0.05
+  walkFrames:
+  - {fileID: -8647587273327956491, guid: 3b077fd08284d5e41923938595cbade7, type: 3}
+  - {fileID: -3374454604379380723, guid: 3b077fd08284d5e41923938595cbade7, type: 3}
+  - {fileID: 7558764494380699398, guid: 3b077fd08284d5e41923938595cbade7, type: 3}
+  - {fileID: 6926016915007694203, guid: 3b077fd08284d5e41923938595cbade7, type: 3}
+  - {fileID: -3951488770114854535, guid: 3b077fd08284d5e41923938595cbade7, type: 3}
+  - {fileID: 7610011056556642618, guid: 3b077fd08284d5e41923938595cbade7, type: 3}
+  - {fileID: -5831632846312306573, guid: 3b077fd08284d5e41923938595cbade7, type: 3}
+  - {fileID: -4626934465059276383, guid: 3b077fd08284d5e41923938595cbade7, type: 3}
+  - {fileID: 2087082048469294650, guid: 3b077fd08284d5e41923938595cbade7, type: 3}
+  - {fileID: 148732629217313217, guid: 3b077fd08284d5e41923938595cbade7, type: 3}
+  walkFps: 15
+  walkMinSpeedX: 0.01
+  runSwitchSpeedX: 2.5
+  runAfterUnblockedSeconds: 7
   killLineTag: KillLine
   stopUiSceneName: GAMEOVER1
   disableTimeScaleOnStop: 1
@@ -1036,7 +1051,7 @@ BoxCollider2D:
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
-  m_Offset: {x: 0.00027048588, y: 0.022075832}
+  m_Offset: {x: -0.0021565855, y: 0.022075832}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0.5, y: 0.5}
@@ -1046,7 +1061,7 @@ BoxCollider2D:
     drawMode: 0
     adaptiveTiling: 0
   m_AutoTiling: 0
-  m_Size: {x: 0.24309987, y: 0.32920736}
+  m_Size: {x: 0.20426685, y: 0.32920736}
   m_EdgeRadius: 0
 --- !u!1660057539 &9223372036854775807
 SceneRoots:

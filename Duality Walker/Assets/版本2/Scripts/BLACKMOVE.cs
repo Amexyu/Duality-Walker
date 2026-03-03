@@ -56,12 +56,26 @@ public class BLACKMOVE : MonoBehaviour
     [SerializeField] private bool useUnscaledTime = true;
     [SerializeField] private float runMinSpeedX = 0.05f;
 
+    [Header("WALK帧动画（可选）")]
+    [SerializeField] private Sprite[] walkFrames;
+    [SerializeField] private float walkFps = 8f;
+    [SerializeField] private float walkMinSpeedX = 0.01f;
+    [SerializeField] private float runSwitchSpeedX = 2.5f;
+    [SerializeField] private float runAfterUnblockedSeconds = 7f;
+
     [Header("死亡/结算")]
     [SerializeField] private string killLineTag = "KillLine";
     [SerializeField] private string stopUiSceneName = "StopUI";
     [SerializeField] private bool disableTimeScaleOnStop = true;
 
     [SerializeField] private float startMoveDelay = 0.02f;
+
+    private enum FrameAnimMode
+    {
+        None,
+        Walk,
+        Run
+    }
 
     private Rigidbody2D rb;
     private Camera mainCamera;
@@ -95,9 +109,12 @@ public class BLACKMOVE : MonoBehaviour
     private int currentRunFrameIndex;
     private float runFrameTimer;
     private bool isPlayingRun;
+    private FrameAnimMode currentFrameAnimMode = FrameAnimMode.None;
 
     private bool isBlockedThisStep;
     private bool isGameStopped;
+    private float uninterruptedMoveTime;
+    private bool runByUnblockedTime;
 
     private void Awake()
     {
@@ -158,6 +175,8 @@ public class BLACKMOVE : MonoBehaviour
         isBlockedThisStep = false;
         unblockedTime = 0f;
         currentMoveSpeed = moveSpeed;
+        uninterruptedMoveTime = 0f;
+        runByUnblockedTime = false;
 
         if (rb != null)
         {
@@ -219,19 +238,31 @@ public class BLACKMOVE : MonoBehaviour
             return;
         }
 
-        bool isMovingByVelocity = Mathf.Abs(rb.linearVelocity.x) > runMinSpeedX;
-        bool shouldPlayRun = isMovingByVelocity || isBlockedThisStep;
+        float speedXAbs = Mathf.Abs(rb.linearVelocity.x);
+        bool isMovingByVelocity = speedXAbs > walkMinSpeedX;
+        bool shouldPlay = isMovingByVelocity || isBlockedThisStep;
 
-        if (shouldPlayRun)
+        if (!shouldPlay)
         {
-            if (!isPlayingRun)
+            StopRun();
+            return;
+        }
+
+        // 改为：连续未受阻移动达到阈值才进入 Run
+        bool shouldRun = runByUnblockedTime;
+        if (shouldRun)
+        {
+            if (!isPlayingRun || currentFrameAnimMode != FrameAnimMode.Run)
             {
                 PlayRun();
             }
         }
-        else if (isPlayingRun)
+        else
         {
-            StopRun();
+            if (!isPlayingRun || currentFrameAnimMode != FrameAnimMode.Walk)
+            {
+                PlayWalk();
+            }
         }
 
         UpdateRunAnimation();
@@ -266,6 +297,19 @@ public class BLACKMOVE : MonoBehaviour
         {
             unblockedTime += Time.fixedDeltaTime;
         }
+
+        // 连续未受阻移动计时：被阻挡或几乎不动就清零
+        bool isMovingForward = actualMove > 0.0001f;
+        if (!blocked && isMovingForward)
+        {
+            uninterruptedMoveTime += Time.fixedDeltaTime;
+        }
+        else
+        {
+            uninterruptedMoveTime = 0f;
+        }
+
+        runByUnblockedTime = uninterruptedMoveTime >= runAfterUnblockedSeconds;
 
         bool grounded = IsGrounded();
 
@@ -386,55 +430,102 @@ public class BLACKMOVE : MonoBehaviour
         if (hasAnimBoost) animator.SetBool(animBoostHash, boosting);
     }
 
+    private void PlayWalk()
+    {
+        if (walkFrames != null && walkFrames.Length > 0)
+        {
+            StartFrameAnimation(FrameAnimMode.Walk, walkFrames, walkFps);
+            return;
+        }
+
+        PlayRun();
+    }
+
     private void PlayRun()
     {
         if (runFrames == null || runFrames.Length == 0)
         {
             isPlayingRun = false;
+            currentFrameAnimMode = FrameAnimMode.None;
             Debug.LogWarning("[BLACKMOVE] runFrames 为空，无法播放。", this);
             return;
         }
 
+        StartFrameAnimation(FrameAnimMode.Run, runFrames, runFps);
+    }
+
+    private void StartFrameAnimation(FrameAnimMode mode, Sprite[] frames, float fps)
+    {
         if (targetImage == null && targetSpriteRenderer == null)
         {
             isPlayingRun = false;
+            currentFrameAnimMode = FrameAnimMode.None;
             Debug.LogWarning("[BLACKMOVE] 未找到 Image 或 SpriteRenderer。", this);
             return;
         }
 
+        if (frames == null || frames.Length == 0)
+        {
+            isPlayingRun = false;
+            currentFrameAnimMode = FrameAnimMode.None;
+            return;
+        }
+
+        currentFrameAnimMode = mode;
         isPlayingRun = true;
         currentRunFrameIndex = 0;
         runFrameTimer = 0f;
-        SetFrame(runFrames[currentRunFrameIndex]);
+        SetFrame(frames[currentRunFrameIndex]);
     }
 
     private void StopRun()
     {
         isPlayingRun = false;
+        currentFrameAnimMode = FrameAnimMode.None;
     }
 
     private void UpdateRunAnimation()
     {
-        if (!isPlayingRun || runFrames == null || runFrames.Length == 0)
+        if (!isPlayingRun)
         {
             return;
         }
 
-        if (runFps <= 0f)
+        Sprite[] frames = null;
+        float fps = 0f;
+
+        if (currentFrameAnimMode == FrameAnimMode.Run)
         {
-            runFps = 1f;
+            frames = runFrames;
+            fps = runFps;
+        }
+        else if (currentFrameAnimMode == FrameAnimMode.Walk)
+        {
+            bool hasWalk = walkFrames != null && walkFrames.Length > 0;
+            frames = hasWalk ? walkFrames : runFrames;
+            fps = hasWalk ? walkFps : runFps;
+        }
+
+        if (frames == null || frames.Length == 0)
+        {
+            return;
+        }
+
+        if (fps <= 0f)
+        {
+            fps = 1f;
         }
 
         float deltaTime = useUnscaledTime ? Time.unscaledDeltaTime : Time.deltaTime;
-        float frameDuration = 1f / runFps;
+        float frameDuration = 1f / fps;
 
         runFrameTimer += deltaTime;
 
         while (runFrameTimer >= frameDuration)
         {
             runFrameTimer -= frameDuration;
-            currentRunFrameIndex = (currentRunFrameIndex + 1) % runFrames.Length;
-            SetFrame(runFrames[currentRunFrameIndex]);
+            currentRunFrameIndex = (currentRunFrameIndex + 1) % frames.Length;
+            SetFrame(frames[currentRunFrameIndex]);
         }
     }
 
