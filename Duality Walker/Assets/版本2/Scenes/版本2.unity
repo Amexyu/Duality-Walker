@@ -738,7 +738,7 @@ GameObject:
   - component: {fileID: 1369680761}
   m_Layer: 0
   m_Name: KillLine
-  m_TagString: Untagged
+  m_TagString: KillLine
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -895,6 +895,9 @@ MonoBehaviour:
   runFps: 20
   useUnscaledTime: 1
   runMinSpeedX: 0.05
+  killLineTag: KillLine
+  stopUiSceneName: StopUI
+  disableTimeScaleOnStop: 1
 --- !u!50 &1702622952
 Rigidbody2D:
   serializedVersion: 5
