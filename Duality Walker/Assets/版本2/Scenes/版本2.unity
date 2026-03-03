@@ -871,6 +871,30 @@ MonoBehaviour:
   forceCameraForward: 1
   cameraForwardSpeed: 3
   playerSortingOrder: 50
+  animator: {fileID: 0}
+  animSpeedXParam: SpeedX
+  animSpeedYParam: SpeedY
+  animGroundedParam: Grounded
+  animFallingParam: Falling
+  animBlockedParam: Blocked
+  animBoostParam: Boost
+  useRunFrameAnimation: 1
+  targetImage: {fileID: 0}
+  targetSpriteRenderer: {fileID: 0}
+  runFrames:
+  - {fileID: -1989865771540885461, guid: 16219f8d17575944388c579a8c3b54f2, type: 3}
+  - {fileID: -9041552064581153543, guid: 16219f8d17575944388c579a8c3b54f2, type: 3}
+  - {fileID: 1915251510348220797, guid: 16219f8d17575944388c579a8c3b54f2, type: 3}
+  - {fileID: -7813390843653936989, guid: 16219f8d17575944388c579a8c3b54f2, type: 3}
+  - {fileID: -4902072460925640598, guid: 16219f8d17575944388c579a8c3b54f2, type: 3}
+  - {fileID: 8886709971072802056, guid: 16219f8d17575944388c579a8c3b54f2, type: 3}
+  - {fileID: 4004168029143891894, guid: 16219f8d17575944388c579a8c3b54f2, type: 3}
+  - {fileID: -3612978247528898830, guid: 16219f8d17575944388c579a8c3b54f2, type: 3}
+  - {fileID: 8679254658645583051, guid: 16219f8d17575944388c579a8c3b54f2, type: 3}
+  - {fileID: 1819112463461037700, guid: 16219f8d17575944388c579a8c3b54f2, type: 3}
+  runFps: 20
+  useUnscaledTime: 1
+  runMinSpeedX: 0.05
 --- !u!50 &1702622952
 Rigidbody2D:
   serializedVersion: 5
@@ -942,7 +966,7 @@ SpriteRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
-  m_Sprite: {fileID: 7482667652216324306, guid: 311925a002f4447b3a28927169b83ea6, type: 3}
+  m_Sprite: {fileID: 1645311724923551041, guid: 2d7c5cd66787cb641b984af546bf494d, type: 3}
   m_Color: {r: 0, g: 0, b: 0, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -963,7 +987,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: -0.8, y: 0, z: 0}
-  m_LocalScale: {x: 0.6, y: 0.6, z: 0.6}
+  m_LocalScale: {x: 2, y: 2, z: 2}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -1002,17 +1026,17 @@ BoxCollider2D:
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
-  m_Offset: {x: -0.0052989423, y: -0.0019413829}
+  m_Offset: {x: 0.00027048588, y: 0.0036280155}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0.5, y: 0.5}
-    oldSize: {x: 1, y: 1}
+    oldSize: {x: 0.22, y: 0.34}
     newSize: {x: 1, y: 1}
     adaptiveTilingThreshold: 0.5
     drawMode: 0
     adaptiveTiling: 0
   m_AutoTiling: 0
-  m_Size: {x: 0.9894021, y: 0.9861649}
+  m_Size: {x: 0.24309987, y: 0.366103}
   m_EdgeRadius: 0
 --- !u!1660057539 &9223372036854775807
 SceneRoots:

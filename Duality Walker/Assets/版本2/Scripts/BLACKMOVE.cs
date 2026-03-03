@@ -1,4 +1,6 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
 [RequireComponent(typeof(Rigidbody2D))]
 public class BLACKMOVE : MonoBehaviour
@@ -36,6 +38,29 @@ public class BLACKMOVE : MonoBehaviour
     [Header("玩家显示层级")]
     [SerializeField] private int playerSortingOrder = 50;
 
+    [Header("Animator参数动画（可选）")]
+    [SerializeField] private Animator animator;
+    [SerializeField] private string animSpeedXParam = "SpeedX";
+    [SerializeField] private string animSpeedYParam = "SpeedY";
+    [SerializeField] private string animGroundedParam = "Grounded";
+    [SerializeField] private string animFallingParam = "Falling";
+    [SerializeField] private string animBlockedParam = "Blocked";
+    [SerializeField] private string animBoostParam = "Boost";
+
+    [Header("RUN帧动画（来自STARTUINPC）")]
+    [SerializeField] private bool useRunFrameAnimation = true;
+    [SerializeField] private Image targetImage;
+    [SerializeField] private SpriteRenderer targetSpriteRenderer;
+    [SerializeField] private Sprite[] runFrames;
+    [SerializeField] private float runFps = 12f;
+    [SerializeField] private bool useUnscaledTime = true;
+    [SerializeField] private float runMinSpeedX = 0.05f;
+
+    [Header("死亡/结算")]
+    [SerializeField] private string killLineTag = "KillLine";
+    [SerializeField] private string stopUiSceneName = "StopUI";
+    [SerializeField] private bool disableTimeScaleOnStop = true;
+
     private Rigidbody2D rb;
     private Camera mainCamera;
     private Collider2D bodyCol;
@@ -50,6 +75,27 @@ public class BLACKMOVE : MonoBehaviour
     private float unblockedTime;
     private float lastX;
 
+    private int animSpeedXHash;
+    private int animSpeedYHash;
+    private int animGroundedHash;
+    private int animFallingHash;
+    private int animBlockedHash;
+    private int animBoostHash;
+
+    private bool hasAnimSpeedX;
+    private bool hasAnimSpeedY;
+    private bool hasAnimGrounded;
+    private bool hasAnimFalling;
+    private bool hasAnimBlocked;
+    private bool hasAnimBoost;
+
+    private int currentRunFrameIndex;
+    private float runFrameTimer;
+    private bool isPlayingRun;
+
+    private bool isBlockedThisStep;
+    private bool isGameStopped;
+
     private void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
@@ -57,6 +103,26 @@ public class BLACKMOVE : MonoBehaviour
         if (bodyCol == null)
         {
             bodyCol = GetComponentInChildren<Collider2D>();
+        }
+
+        if (animator == null)
+        {
+            animator = GetComponentInChildren<Animator>();
+        }
+
+        if (targetImage == null)
+        {
+            targetImage = GetComponent<Image>();
+        }
+
+        if (targetSpriteRenderer == null)
+        {
+            targetSpriteRenderer = GetComponent<SpriteRenderer>();
+        }
+
+        if (targetSpriteRenderer == null)
+        {
+            targetSpriteRenderer = GetComponentInChildren<SpriteRenderer>();
         }
 
         rb.bodyType = RigidbodyType2D.Dynamic;
@@ -79,7 +145,21 @@ public class BLACKMOVE : MonoBehaviour
         currentMoveSpeed = moveSpeed;
         lastX = rb.position.x;
 
+        CacheAnimatorParams();
         ApplyPlayerSortingOrder();
+    }
+
+    private void OnEnable()
+    {
+        if (useRunFrameAnimation)
+        {
+            PlayRun();
+        }
+    }
+
+    private void OnDisable()
+    {
+        StopRun();
     }
 
     private void Start()
@@ -95,13 +175,45 @@ public class BLACKMOVE : MonoBehaviour
         cameraTrackX = rb.position.x + lookAheadX;
     }
 
+    private void Update()
+    {
+        if (!useRunFrameAnimation)
+        {
+            return;
+        }
+
+        bool isMovingByVelocity = Mathf.Abs(rb.linearVelocity.x) > runMinSpeedX;
+        bool shouldPlayRun = isMovingByVelocity || isBlockedThisStep;
+
+        if (shouldPlayRun)
+        {
+            if (!isPlayingRun)
+            {
+                PlayRun();
+            }
+        }
+        else if (isPlayingRun)
+        {
+            StopRun();
+        }
+
+        UpdateRunAnimation();
+    }
+
     private void FixedUpdate()
     {
+        if (isGameStopped)
+        {
+            return;
+        }
+
         float currentX = rb.position.x;
         float expectedMove = currentMoveSpeed * Time.fixedDeltaTime;
         float actualMove = Mathf.Max(0f, currentX - lastX);
 
         bool blocked = expectedMove > 0.0001f && actualMove < expectedMove * blockedProgressRatio;
+        isBlockedThisStep = blocked;
+
         if (blocked)
         {
             unblockedTime = 0f;
@@ -111,8 +223,10 @@ public class BLACKMOVE : MonoBehaviour
             unblockedTime += Time.fixedDeltaTime;
         }
 
+        bool grounded = IsGrounded();
+
         float targetSpeed = moveSpeed;
-        if (unblockedTime >= unblockedDelay && IsBehindCenter() && IsGrounded())
+        if (unblockedTime >= unblockedDelay && IsBehindCenter() && grounded)
         {
             targetSpeed = boostMoveSpeed;
         }
@@ -124,6 +238,12 @@ public class BLACKMOVE : MonoBehaviour
         v.x = currentMoveSpeed;
         v.y = Mathf.Max(v.y, -maxFallSpeed);
         rb.linearVelocity = v;
+
+        if (!useRunFrameAnimation)
+        {
+            bool boosting = targetSpeed > moveSpeed + 0.001f;
+            UpdateAnimation(v, grounded, blocked, boosting);
+        }
 
         lastX = rb.position.x;
     }
@@ -152,7 +272,7 @@ public class BLACKMOVE : MonoBehaviour
         float playerX = rb.position.x;
         float playerY = rb.position.y;
 
-        var followX = playerX + lookAheadX;
+        float followX = playerX + lookAheadX;
         if (forceCameraForward)
         {
             cameraTrackX += cameraForwardSpeed * Time.deltaTime;
@@ -161,7 +281,7 @@ public class BLACKMOVE : MonoBehaviour
 
         camPos.x = Mathf.SmoothDamp(camPos.x, followX, ref camVelX, cameraSmoothTimeX);
 
-        var targetY = baseCamY;
+        float targetY = baseCamY;
         if (lockCameraY && followDownWhenFalling)
         {
             if (playerY < baseCamY + followDownTriggerY)
@@ -178,6 +298,113 @@ public class BLACKMOVE : MonoBehaviour
         camPos.z = baseCamZ;
 
         mainCamera.transform.position = camPos;
+    }
+
+    private void CacheAnimatorParams()
+    {
+        if (animator == null)
+        {
+            return;
+        }
+
+        animSpeedXHash = Animator.StringToHash(animSpeedXParam);
+        animSpeedYHash = Animator.StringToHash(animSpeedYParam);
+        animGroundedHash = Animator.StringToHash(animGroundedParam);
+        animFallingHash = Animator.StringToHash(animFallingParam);
+        animBlockedHash = Animator.StringToHash(animBlockedParam);
+        animBoostHash = Animator.StringToHash(animBoostParam);
+
+        var parameters = animator.parameters;
+        for (int i = 0; i < parameters.Length; i++)
+        {
+            string name = parameters[i].name;
+            if (name == animSpeedXParam) hasAnimSpeedX = true;
+            if (name == animSpeedYParam) hasAnimSpeedY = true;
+            if (name == animGroundedParam) hasAnimGrounded = true;
+            if (name == animFallingParam) hasAnimFalling = true;
+            if (name == animBlockedParam) hasAnimBlocked = true;
+            if (name == animBoostParam) hasAnimBoost = true;
+        }
+    }
+
+    private void UpdateAnimation(Vector2 velocity, bool grounded, bool blocked, bool boosting)
+    {
+        if (animator == null)
+        {
+            return;
+        }
+
+        if (hasAnimSpeedX) animator.SetFloat(animSpeedXHash, Mathf.Abs(velocity.x));
+        if (hasAnimSpeedY) animator.SetFloat(animSpeedYHash, velocity.y);
+        if (hasAnimGrounded) animator.SetBool(animGroundedHash, grounded);
+        if (hasAnimFalling) animator.SetBool(animFallingHash, velocity.y < -0.01f && !grounded);
+        if (hasAnimBlocked) animator.SetBool(animBlockedHash, blocked);
+        if (hasAnimBoost) animator.SetBool(animBoostHash, boosting);
+    }
+
+    private void PlayRun()
+    {
+        if (runFrames == null || runFrames.Length == 0)
+        {
+            isPlayingRun = false;
+            Debug.LogWarning("[BLACKMOVE] runFrames 为空，无法播放。", this);
+            return;
+        }
+
+        if (targetImage == null && targetSpriteRenderer == null)
+        {
+            isPlayingRun = false;
+            Debug.LogWarning("[BLACKMOVE] 未找到 Image 或 SpriteRenderer。", this);
+            return;
+        }
+
+        isPlayingRun = true;
+        currentRunFrameIndex = 0;
+        runFrameTimer = 0f;
+        SetFrame(runFrames[currentRunFrameIndex]);
+    }
+
+    private void StopRun()
+    {
+        isPlayingRun = false;
+    }
+
+    private void UpdateRunAnimation()
+    {
+        if (!isPlayingRun || runFrames == null || runFrames.Length == 0)
+        {
+            return;
+        }
+
+        if (runFps <= 0f)
+        {
+            runFps = 1f;
+        }
+
+        float deltaTime = useUnscaledTime ? Time.unscaledDeltaTime : Time.deltaTime;
+        float frameDuration = 1f / runFps;
+
+        runFrameTimer += deltaTime;
+
+        while (runFrameTimer >= frameDuration)
+        {
+            runFrameTimer -= frameDuration;
+            currentRunFrameIndex = (currentRunFrameIndex + 1) % runFrames.Length;
+            SetFrame(runFrames[currentRunFrameIndex]);
+        }
+    }
+
+    private void SetFrame(Sprite frame)
+    {
+        if (targetImage != null)
+        {
+            targetImage.sprite = frame;
+        }
+
+        if (targetSpriteRenderer != null)
+        {
+            targetSpriteRenderer.sprite = frame;
+        }
     }
 
     private void ApplyPlayerSortingOrder()
@@ -205,5 +432,41 @@ public class BLACKMOVE : MonoBehaviour
         Vector2 origin = new Vector2(b.center.x, b.min.y + size.y * 0.5f);
         RaycastHit2D hit = Physics2D.BoxCast(origin, size, 0f, Vector2.down, groundedCheckDistance, groundMask);
         return hit.collider != null;
+    }
+
+    private void OnTriggerEnter2D(Collider2D other)
+    {
+        TryEnterStopUi(other.gameObject);
+    }
+
+    private void OnCollisionEnter2D(Collision2D collision)
+    {
+        TryEnterStopUi(collision.gameObject);
+    }
+
+    private void TryEnterStopUi(GameObject other)
+    {
+        if (isGameStopped || other == null)
+        {
+            return;
+        }
+
+        if (!other.CompareTag(killLineTag))
+        {
+            return;
+        }
+
+        isGameStopped = true;
+        StopRun();
+
+        rb.linearVelocity = Vector2.zero;
+        rb.simulated = false;
+
+        if (disableTimeScaleOnStop)
+        {
+            Time.timeScale = 0f;
+        }
+
+        SceneManager.LoadScene(stopUiSceneName);
     }
 }
