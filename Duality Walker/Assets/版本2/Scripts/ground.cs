@@ -32,24 +32,26 @@ public class ground : MonoBehaviour
     [Header("地形间隔")]
     [SerializeField] private int minFlatColumnsBetweenFeatures = 3;
 
-    // 放到 [Header("地形间隔")] 相关字段后面（minFlatColumnsBetweenFeatures 后面）
     [Header("交替微地形（1凸1凹循环）")]
     [SerializeField] private bool enableAlternatingMicroPattern = true;
-    [SerializeField] [Range(0f, 1f)] private float alternatingPatternChance = 0.08f;
+    [SerializeField][Range(0f, 1f)] private float alternatingPatternChance = 0.08f;
     [SerializeField] private int alternatingPatternMinLength = 6;
     [SerializeField] private int alternatingPatternMaxLength = 14;
     [SerializeField] private bool alternatingPatternRandomStartType = true;
 
     [Header("摄像机内前方突发地形（辅助线前方）")]
     [SerializeField] private bool enableCameraFrontSurprise = true;
-    [SerializeField] [Range(0f, 1f)] private float cameraFrontSurpriseChance = 0.22f;
-    [SerializeField] [Range(0f, 1f)] private float cameraFrontBumpRatio = 0.5f; // 0=全凹陷 1=全凸起
-    [SerializeField] private float assistLineViewportX = 0.5f;                 // 需与辅助线一致
-    [SerializeField] private int cameraFrontStartOffsetColumns = 2;            // 辅助线前方起始列偏移
-    [SerializeField] private int cameraFrontRightPaddingColumns = 2;           // 右边界保留列数
+    [SerializeField][Range(0f, 1f)] private float cameraFrontSurpriseChance = 0.22f;
+    [SerializeField][Range(0f, 1f)] private float cameraFrontBumpRatio = 0.5f; // 0=全凹陷 1=全凸起
+    [SerializeField] private float assistLineViewportX = 0.5f;
+    [SerializeField] private int cameraFrontStartOffsetColumns = 2;
+    [SerializeField] private int cameraFrontRightPaddingColumns = 2;
 
     [Header("贴地修正（用于消除角色与地面细缝）")]
     [SerializeField] private float surfaceSnapTolerance = 0.01f;
+
+    [Header("渲染缝隙修正（仅视觉）")]
+    [SerializeField] private float blockOverlap = 0.01f;
 
     [Header("合成器重建间隔")]
     [SerializeField] private float compositeRebuildInterval = 0.08f;
@@ -102,8 +104,8 @@ public class ground : MonoBehaviour
     private enum FeatureType
     {
         None,
-        Obstacle, // 白区黑障碍
-        Pit       // 黑区白坑
+        Obstacle,
+        Pit
     }
 
     private FeatureType activeFeatureType = FeatureType.None;
@@ -111,13 +113,11 @@ public class ground : MonoBehaviour
     private int activeFeatureStartX;
     private int activeFeatureEndX;
 
-    // 交替微地形运行时状态
     private bool activeAlternatingPattern;
     private int alternatingPatternStartX;
     private int alternatingPatternEndX;
     private bool alternatingPatternStartWithBump;
 
-    // 障碍形状（y>=1，放在白区）
     private static readonly Vector2Int[][] ObstacleShapes =
     {
         new[] { new Vector2Int(0, 1) },
@@ -125,15 +125,11 @@ public class ground : MonoBehaviour
         new[] { new Vector2Int(0, 1), new Vector2Int(0, 2) },
         new[] { new Vector2Int(0, 1), new Vector2Int(1, 1), new Vector2Int(0, 2) },
         new[] { new Vector2Int(0, 1), new Vector2Int(1, 1), new Vector2Int(2, 1), new Vector2Int(1, 2) },
-
-        // 新增难形状1：高墙+底座（更难绕过）
         new[]
         {
             new Vector2Int(0, 1), new Vector2Int(1, 1), new Vector2Int(2, 1),
             new Vector2Int(2, 2), new Vector2Int(2, 3)
         },
-
-        // 新增难形状2：阶梯凸起
         new[]
         {
             new Vector2Int(0, 1), new Vector2Int(1, 1),
@@ -141,23 +137,17 @@ public class ground : MonoBehaviour
         }
     };
 
-    // 坑形状（y<=0，挖黑区）
     private static readonly Vector2Int[][] PitShapes =
     {
-        // 删除了原来的 1x1 小坑，避免“掉不进去”
         new[] { new Vector2Int(0, 0), new Vector2Int(0, -1) },
         new[] { new Vector2Int(0, 0), new Vector2Int(1, 0) },
         new[] { new Vector2Int(0, 0), new Vector2Int(1, 0), new Vector2Int(0, -1), new Vector2Int(1, -1) },
         new[] { new Vector2Int(0, 0), new Vector2Int(1, 0), new Vector2Int(2, 0), new Vector2Int(1, -1) },
-
-        // 新增难形状1：三宽双深漏斗
         new[]
         {
             new Vector2Int(0, 0), new Vector2Int(1, 0), new Vector2Int(2, 0),
             new Vector2Int(1, -1), new Vector2Int(1, -2)
         },
-
-        // 新增难形状2：四宽双深大坑
         new[]
         {
             new Vector2Int(0, 0), new Vector2Int(1, 0), new Vector2Int(2, 0), new Vector2Int(3, 0),
@@ -313,7 +303,6 @@ public class ground : MonoBehaviour
         featureStartColumn = playerCol + Mathf.Max(1, featureStartSafeColumns);
     }
 
-    // 替换原 GenerateColumn
     private void GenerateColumn(int xIndex)
     {
         TryStartFeatureAtColumn(xIndex);
@@ -363,7 +352,6 @@ public class ground : MonoBehaviour
         }
     }
 
-    // 替换原 TryStartFeatureAtColumn
     private void TryStartFeatureAtColumn(int xIndex)
     {
         if (!featureUnlocked || xIndex < featureStartColumn)
@@ -382,7 +370,6 @@ public class ground : MonoBehaviour
             return;
         }
 
-        // 先尝试“摄像机内、辅助线前方”的突发地形
         if (TryStartCameraFrontSurpriseAtColumn(xIndex))
         {
             return;
@@ -408,7 +395,6 @@ public class ground : MonoBehaviour
         }
     }
 
-    // 新增方法：放在 TryStartFeatureAtColumn 后面
     private bool TryStartCameraFrontSurpriseAtColumn(int xIndex)
     {
         if (!enableCameraFrontSurprise)
@@ -465,7 +451,6 @@ public class ground : MonoBehaviour
         activeFeatureEndX = startX + GetShapeWidth(shape) - 1;
     }
 
-    // 新增到 StartFeature(...) 后面即可
     private void StartAlternatingPattern(int startX)
     {
         activeAlternatingPattern = true;
@@ -503,13 +488,11 @@ public class ground : MonoBehaviour
 
         if (placeBump)
         {
-            // 1格凸起（分界线上方）
             Vector3 bumpPos = new(worldX, (baseSurfaceUnits + 1) * blockSize, 0f);
             SpawnOrReplaceBlock(root, bumpPos, Color.black, true, "Obstacle");
         }
         else
         {
-            // 1格凹陷（分界线位置）
             Vector3 pitPos = new(worldX, baseSurfaceUnits * blockSize, 0f);
             SpawnOrReplaceBlock(root, pitPos, Color.white, false, "Pit");
         }
@@ -598,7 +581,9 @@ public class ground : MonoBehaviour
         GameObject go = new(namePrefix);
         go.transform.SetParent(parent, true);
         go.transform.position = worldPos;
-        go.transform.localScale = new Vector3(blockSize, blockSize, 1f);
+
+        float renderSize = blockSize + Mathf.Max(0f, blockOverlap);
+        go.transform.localScale = new Vector3(renderSize, renderSize, 1f);
 
         SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
         sr.sprite = runtimeSprite;
@@ -767,7 +752,6 @@ public class ground : MonoBehaviour
             return true;
         }
 
-        // 填坑：把坑位替换为黑色可碰撞地块
         FillPitCell(cell, key, worldPos);
         return true;
     }
@@ -789,7 +773,9 @@ public class ground : MonoBehaviour
             Mathf.RoundToInt(worldPos.y / blockSize) * blockSize,
             0f
         );
-        go.transform.localScale = new Vector3(blockSize, blockSize, 1f);
+
+        float renderSize = blockSize + Mathf.Max(0f, blockOverlap);
+        go.transform.localScale = new Vector3(renderSize, renderSize, 1f);
 
         SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
         sr.sprite = runtimeSprite;
@@ -797,7 +783,7 @@ public class ground : MonoBehaviour
 
         if (usePitFillColorTransition)
         {
-            sr.color = Color.white; // 先白，再渐变到黑
+            sr.color = Color.white;
         }
         else
         {
@@ -841,7 +827,6 @@ public class ground : MonoBehaviour
         float cellTop = filledCellCenterY + blockSize * 0.5f;
         float footY = playerCol.bounds.min.y;
 
-        // 只有脚在地块顶部以下，才做抬升
         if (footY >= cellTop)
         {
             return;
@@ -919,7 +904,7 @@ public class ground : MonoBehaviour
         }
 
         var marker = obstacleCell.GetComponent<FeatureCell>();
-        if(marker != null)
+        if (marker != null)
         {
             marker.cellType = FeatureCellType.None;
         }
@@ -984,7 +969,7 @@ public class ground : MonoBehaviour
         {
             t += Time.deltaTime;
             float p = Mathf.Clamp01(t / duration);
-            float eased = p * p * (3f - 2f * p); // SmoothStep
+            float eased = p * p * (3f - 2f * p);
 
             if (sr != null)
             {
@@ -1031,7 +1016,7 @@ public class ground : MonoBehaviour
         {
             t += Time.deltaTime;
             float p = Mathf.Clamp01(t / duration);
-            float eased = p * p * (3f - 2f * p); // SmoothStep
+            float eased = p * p * (3f - 2f * p);
 
             if (sr != null)
             {
