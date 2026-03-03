@@ -46,6 +46,14 @@ public class ground : MonoBehaviour
     [Header("Çå³ýÓ³Éä")]
     [SerializeField] private bool reverseClearMapping = true; // false: ºÚ->ÕÏ°­ °×->¿Ó£»true: ºÚ->¿Ó °×->ÕÏ°­
 
+    [Header("ÌØÕ÷¿é±ß¿ò£¨ÕÏ°­/¿Ó/Ìî¿Ó£©")]
+    [SerializeField] private bool useFeatureCellBorder = true;
+    [SerializeField] private float featureBorderScale = 1.1f;
+    [SerializeField] private int featureBorderSortingOffset = -1;
+    [SerializeField] private Color obstacleBorderColor = Color.white;
+    [SerializeField] private Color pitBorderColor = Color.black;
+    [SerializeField] private Color filledPitBorderColor = Color.white;
+
     private readonly Queue<ColumnRecord> spawnedColumns = new();
     private readonly Dictionary<int, GameObject> columnRoots = new();
     private readonly Dictionary<Vector2Int, GameObject> cellObjects = new();
@@ -444,10 +452,12 @@ public class ground : MonoBehaviour
         if (namePrefix == "Obstacle")
         {
             marker.cellType = FeatureCellType.Obstacle;
+            TryApplyFeatureBorder(go, sr, obstacleBorderColor);
         }
         else if (namePrefix == "Pit")
         {
             marker.cellType = FeatureCellType.Pit;
+            TryApplyFeatureBorder(go, sr, pitBorderColor);
         }
         else
         {
@@ -570,6 +580,8 @@ public class ground : MonoBehaviour
 
     public float CellSize => blockSize;
 
+    public float SurfaceY => baseSurfaceUnits * blockSize;
+
     public bool TryClearFeatureCell(Vector3 worldPos, bool isBlackBlock)
     {
         Vector2Int key = MakeCellKey(worldPos.x, worldPos.y);
@@ -594,13 +606,7 @@ public class ground : MonoBehaviour
 
         if (canClearObstacle)
         {
-            if (cell.GetComponent<Collider2D>() != null)
-            {
-                colliderDirty = true;
-            }
-
-            cellObjects.Remove(key);
-            Destroy(cell);
+            ReplaceObstacleWithWhiteCell(cell, key, worldPos);
             return true;
         }
 
@@ -632,6 +638,8 @@ public class ground : MonoBehaviour
         sr.sprite = runtimeSprite;
         sr.color = Color.black;
         sr.sortingOrder = 0;
+
+        TryApplyFeatureBorder(go, sr, filledPitBorderColor);
 
         FeatureCell marker = go.AddComponent<FeatureCell>();
         marker.cellType = FeatureCellType.None;
@@ -697,5 +705,74 @@ public class ground : MonoBehaviour
     public int CurrentPitShapeIndex
     {
         get { return Mathf.Clamp(testPitShapeIndex, 0, PitShapes.Length - 1); }
+    }
+
+    private void TryApplyFeatureBorder(GameObject host, SpriteRenderer srcRenderer, Color borderColor)
+    {
+        if (!useFeatureCellBorder || host == null || srcRenderer == null || srcRenderer.sprite == null)
+        {
+            return;
+        }
+
+        Transform border = host.transform.Find("Border");
+        GameObject borderGo;
+        if (border == null)
+        {
+            borderGo = new GameObject("Border");
+            borderGo.transform.SetParent(host.transform, false);
+        }
+        else
+        {
+            borderGo = border.gameObject;
+        }
+
+        borderGo.transform.localPosition = Vector3.zero;
+        borderGo.transform.localRotation = Quaternion.identity;
+        borderGo.transform.localScale = new Vector3(featureBorderScale, featureBorderScale, 1f);
+
+        SpriteRenderer borderSr = borderGo.GetComponent<SpriteRenderer>();
+        if (borderSr == null)
+        {
+            borderSr = borderGo.AddComponent<SpriteRenderer>();
+        }
+
+        borderSr.sprite = srcRenderer.sprite;
+        borderSr.color = borderColor;
+        borderSr.sortingOrder = srcRenderer.sortingOrder + featureBorderSortingOffset;
+    }
+
+    private void ReplaceObstacleWithWhiteCell(GameObject obstacleCell, Vector2Int key, Vector3 worldPos)
+    {
+        Transform parent = obstacleCell != null ? obstacleCell.transform.parent : transform;
+
+        if (obstacleCell != null)
+        {
+            if (obstacleCell.GetComponent<Collider2D>() != null)
+            {
+                colliderDirty = true;
+            }
+
+            cellObjects.Remove(key);
+            Destroy(obstacleCell);
+        }
+
+        GameObject go = new("White");
+        go.transform.SetParent(parent, true);
+        go.transform.position = new Vector3(
+            ColumnToWorldX(WorldXToCellIndex(worldPos.x)),
+            Mathf.RoundToInt(worldPos.y / blockSize) * blockSize,
+            0f
+        );
+        go.transform.localScale = new Vector3(blockSize, blockSize, 1f);
+
+        SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
+        sr.sprite = runtimeSprite;
+        sr.color = Color.white;
+        sr.sortingOrder = 0;
+
+        FeatureCell marker = go.AddComponent<FeatureCell>();
+        marker.cellType = FeatureCellType.None;
+
+        cellObjects[key] = go;
     }
 }

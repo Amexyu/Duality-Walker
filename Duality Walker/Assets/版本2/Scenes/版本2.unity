@@ -148,34 +148,22 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 61932814b058c7246b3e1012e05a2906, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  respawnDelay: 0.8
-  maxBlackSupply: 3
-  maxWhiteSupply: 3
-  blackAreaViewport:
-    serializedVersion: 2
-    x: 0.8
-    y: 0.62
-    width: 0.18
-    height: 0.33
-  whiteAreaViewport:
-    serializedVersion: 2
-    x: 0.8
-    y: 0.05
-    width: 0.18
-    height: 0.33
-  areaPaddingInCells: 0.25
-  itemGapInCells: 0.2
-  easyMode: 1
-  fixedShapeForTest: 1
-  blackFixedShapeIndex: 0
-  whiteFixedShapeIndex: 0
-  testMode: 1
-  testBlackShapeIndex: 0
-  testWhiteShapeIndex: 0
-  showAreaFrame: 1
-  blackAreaFrameColor: {r: 0, g: 0, b: 0, a: 1}
-  whiteAreaFrameColor: {r: 1, g: 1, b: 1, a: 1}
-  frameWidth: 0.03
+  shootObstacleKey: 273
+  shootPitKey: 274
+  enableMouseInput: 1
+  inputCooldown: 0.06
+  fireLineViewportX: 0.5
+  fireLineColor: {r: 1, g: 0.9, b: 0.2, a: 1}
+  fireLineWidth: 0.04
+  fireLineSortingOrder: 200
+  launchOffsetInCells: 4
+  impactTravelTime: 0.18
+  passTravelTime: 0.1
+  passDistanceInCells: 1.2
+  projectileSortingOrder: 25
+  snapToNearestFeatureCell: 1
+  clearSnapRadiusInCells: 0.6
+  followFireLineWhileFlying: 1
 --- !u!4 &63060443
 Transform:
   m_ObjectHideFlags: 0
@@ -357,6 +345,12 @@ MonoBehaviour:
   testObstacleShapeIndex: 0
   testPitShapeIndex: 2
   reverseClearMapping: 1
+  useFeatureCellBorder: 1
+  featureBorderScale: 1.1
+  featureBorderSortingOffset: -1
+  obstacleBorderColor: {r: 1, g: 1, b: 1, a: 1}
+  pitBorderColor: {r: 0, g: 0, b: 0, a: 1}
+  filledPitBorderColor: {r: 1, g: 1, b: 1, a: 1}
 --- !u!4 &859229876
 Transform:
   m_ObjectHideFlags: 0
@@ -485,7 +479,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 470}
+  m_AnchoredPosition: {x: -860, y: 487.42}
   m_SizeDelta: {x: 200, y: 105.1512}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1224581817

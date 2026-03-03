@@ -1,50 +1,44 @@
-using System.Collections.Generic;
+using System.Collections;
 using UnityEngine;
 
 public class ShapeSupplySpawner : MonoBehaviour
 {
-    [SerializeField] private float respawnDelay = 0.8f;
-    [SerializeField] private int maxBlackSupply = 3;
-    [SerializeField] private int maxWhiteSupply = 3;
+    [Header("节奏输入")]
+    [SerializeField] private KeyCode shootObstacleKey = KeyCode.UpArrow;   // 上键：填障碍（白块）
+    [SerializeField] private KeyCode shootPitKey = KeyCode.DownArrow;      // 下键：填坑（黑块）
+    [SerializeField] private bool enableMouseInput = true;
+    [SerializeField] private float inputCooldown = 0.06f;
 
-    [Header("供给区（Viewport Rect: x,y,w,h）")]
-    [SerializeField] private Rect blackAreaViewport = new Rect(0.80f, 0.62f, 0.18f, 0.33f);
-    [SerializeField] private Rect whiteAreaViewport = new Rect(0.80f, 0.05f, 0.18f, 0.33f);
+    [Header("提示线（屏幕中线）")]
+    [SerializeField] private float fireLineViewportX = 0.5f;
+    [SerializeField] private Color fireLineColor = new Color(1f, 0.9f, 0.2f, 1f);
+    [SerializeField] private float fireLineWidth = 0.04f;
+    [SerializeField] private int fireLineSortingOrder = 200;
 
-    [SerializeField] private float areaPaddingInCells = 0.25f;
-    [SerializeField] private float itemGapInCells = 0.2f;
+    [Header("发射参数")]
+    [SerializeField] private float launchOffsetInCells = 4f;   // 从黑白交界线两侧起射的偏移
+    [SerializeField] private float impactTravelTime = 0.18f;   // 到达坑位/障碍位所需时间
+    [SerializeField] private float passTravelTime = 0.10f;     // 越过交界线后消失前的时间
+    [SerializeField] private float passDistanceInCells = 1.2f; // 越界继续前进距离
+    [SerializeField] private int projectileSortingOrder = 25;
 
-    // 字段区新增
-    [SerializeField] private bool easyMode = true;
-    [SerializeField] private bool fixedShapeForTest = true;
-    [SerializeField] private int blackFixedShapeIndex = 0;
-    [SerializeField] private int whiteFixedShapeIndex = 0;
-    [SerializeField] private bool testMode = true;
-    [SerializeField] private int testBlackShapeIndex = 0; // 障碍形状索引
-    [SerializeField] private int testWhiteShapeIndex = 0; // 坑形状索引
+    [Header("吸附修正")]
+    [SerializeField] private bool snapToNearestFeatureCell = true;
+    [SerializeField] private float clearSnapRadiusInCells = 0.6f;
 
-    [Header("供给区边框")]
-    [SerializeField] private bool showAreaFrame = true;
-    [SerializeField] private Color blackAreaFrameColor = Color.black;
-    [SerializeField] private Color whiteAreaFrameColor = Color.white;
-    [SerializeField] private float frameWidth = 0.03f;
+    [SerializeField] private bool followFireLineWhileFlying = true;
 
     private Camera cam;
     private ground worldGround;
     private float cellSize = 1f;
-    private float blackTimer;
-    private float whiteTimer;
     private float gridOriginX;
+    private float nextShootTime;
+    private Sprite runtimeSprite;
 
-    private Material frameMaterial;
+    private Material lineMaterial;
+    private LineRenderer fireLine;
 
-    private LineRenderer blackFrame;
-    private LineRenderer whiteFrame;
-
-    private readonly List<DraggableAssembly> blackAssemblies = new();
-    private readonly List<DraggableAssembly> whiteAssemblies = new();
-
-    // 黑块：与 ground 的 ObstacleShapes 对齐
+    // 黑块：与 ground 的 ObstacleShapes 对齐（用于白色发射物去填障碍）
     private static readonly Vector2Int[][] BlackSupplyShapes =
     {
         new[] { new Vector2Int(0, 1) },
@@ -64,7 +58,7 @@ public class ShapeSupplySpawner : MonoBehaviour
         }
     };
 
-    // 白块：与 ground 的 PitShapes 对齐
+    // 白块：与 ground 的 PitShapes 对齐（用于黑色发射物去填坑）
     private static readonly Vector2Int[][] WhiteSupplyShapes =
     {
         new[] { new Vector2Int(0, 0), new Vector2Int(0, -1) },
@@ -88,171 +82,354 @@ public class ShapeSupplySpawner : MonoBehaviour
     {
         cam = Camera.main;
         worldGround = FindFirstObjectByType<ground>();
+
         if (worldGround != null)
         {
             cellSize = worldGround.CellSize;
             gridOriginX = worldGround.transform.position.x;
         }
 
-        EnsureAreaFrames();
-        UpdateAreaFrames();
-
-        SpawnBlack();
-        SpawnWhite();
+        runtimeSprite = CreatePixelSprite();
+        EnsureFireLine();
+        UpdateFireLine();
     }
 
     private void Update()
     {
-        CleanupNulls();
-
-        blackTimer += Time.deltaTime;
-        if (blackTimer >= respawnDelay)
-        {
-            blackTimer = 0f;
-            if (blackAssemblies.Count < maxBlackSupply) SpawnBlack();
-        }
-
-        whiteTimer += Time.deltaTime;
-        if (whiteTimer >= respawnDelay)
-        {
-            whiteTimer = 0f;
-            if (whiteAssemblies.Count < maxWhiteSupply) SpawnWhite();
-        }
+        UpdateFireLine();
+        HandleShootInput();
     }
 
-    private void LateUpdate()
+    private void HandleShootInput()
     {
-        KeepSupplyInSlot();
-        UpdateAreaFrames();
-    }
-
-    private void CleanupNulls()
-    {
-        for (int i = blackAssemblies.Count - 1; i >= 0; i--)
+        if (Time.time < nextShootTime)
         {
-            if (blackAssemblies[i] == null) blackAssemblies.RemoveAt(i);
-        }
-
-        for (int i = whiteAssemblies.Count - 1; i >= 0; i--)
-        {
-            if (whiteAssemblies[i] == null) whiteAssemblies.RemoveAt(i);
-        }
-    }
-
-    private void KeepSupplyInSlot()
-    {
-        LayoutAssembliesInArea(blackAssemblies, blackAreaViewport);
-        LayoutAssembliesInArea(whiteAssemblies, whiteAreaViewport);
-    }
-
-    private void LayoutAssembliesInArea(List<DraggableAssembly> assemblies, Rect viewportArea)
-    {
-        Rect worldArea = ViewportRectToWorldRect(viewportArea);
-
-        float pad = areaPaddingInCells * cellSize;
-        float gap = itemGapInCells * cellSize;
-
-        float minX = worldArea.xMin + pad;
-        float maxX = worldArea.xMax - pad;
-        float minY = worldArea.yMin + pad;
-        float maxY = worldArea.yMax - pad;
-
-        float cursorX = minX;
-        float cursorY = maxY;
-        float rowHeight = 0f;
-
-        for (int i = 0; i < assemblies.Count; i++)
-        {
-            var a = assemblies[i];
-            if (a == null || a.IsDragging) continue;
-
-            GetAssemblyWorldSize(a, out float w, out float h);
-
-            if (cursorX + w > maxX)
-            {
-                cursorX = minX;
-                cursorY -= rowHeight + gap;
-                rowHeight = 0f;
-            }
-
-            if (cursorY - h < minY)
-            {
-                a.transform.position = new Vector3(maxX - w * 0.5f, minY + h * 0.5f, 0f);
-                continue;
-            }
-
-            a.transform.position = new Vector3(cursorX + w * 0.5f, cursorY - h * 0.5f, 0f);
-
-            cursorX += w + gap;
-            rowHeight = Mathf.Max(rowHeight, h);
-        }
-    }
-
-    private void GetAssemblyWorldSize(DraggableAssembly assembly, out float width, out float height)
-    {
-        var blocks = assembly.GetComponentsInChildren<ShapeBlock>();
-        if (blocks.Length == 0)
-        {
-            width = cellSize;
-            height = cellSize;
             return;
         }
 
-        float minX = float.MaxValue;
-        float maxX = float.MinValue;
-        float minY = float.MaxValue;
-        float maxY = float.MinValue;
+        bool shootObstacle = Input.GetKeyDown(shootObstacleKey) || (enableMouseInput && Input.GetMouseButtonDown(0));
+        bool shootPit = Input.GetKeyDown(shootPitKey) || (enableMouseInput && Input.GetMouseButtonDown(1));
+
+        if (shootObstacle)
+        {
+            nextShootTime = Time.time + inputCooldown;
+            ShootToObstacle();
+            return;
+        }
+
+        if (shootPit)
+        {
+            nextShootTime = Time.time + inputCooldown;
+            ShootToPit();
+        }
+    }
+
+    // 上键/左键：白块 -> 填障碍
+    private void ShootToObstacle()
+    {
+        float x = GetFireLineWorldX();
+        float surfaceY = GetSurfaceY();
+
+        Vector3 start = new Vector3(x, surfaceY - launchOffsetInCells * cellSize, 0f);
+        Vector3 impact = new Vector3(x, surfaceY, 0f);
+        Vector3 passEnd = new Vector3(x, surfaceY + passDistanceInCells * cellSize, 0f);
+
+        Vector2Int[] shape = PickBlackShape();
+        GameObject projectile = CreateProjectileAssembly("Shot_Obstacle", false, start, shape, false);
+
+        StartCoroutine(TravelResolveAndDisappear(projectile, impact, passEnd, x));
+    }
+
+    // 下键/右键：黑块 -> 填坑
+    private void ShootToPit()
+    {
+        float x = GetFireLineWorldX();
+        float surfaceY = GetSurfaceY();
+
+        Vector3 start = new Vector3(x, surfaceY + launchOffsetInCells * cellSize, 0f);
+        Vector3 impact = new Vector3(x, surfaceY, 0f);
+        Vector3 passEnd = new Vector3(x, surfaceY - passDistanceInCells * cellSize, 0f);
+
+        Vector2Int[] shape = PickWhiteShape();
+        GameObject projectile = CreateProjectileAssembly("Shot_Pit", true, start, shape, true);
+
+        StartCoroutine(TravelResolveAndDisappear(projectile, impact, passEnd, x));
+    }
+
+    private IEnumerator TravelResolveAndDisappear(GameObject projectile, Vector3 impact, Vector3 passEnd, float lockedX)
+    {
+        if (projectile == null)
+        {
+            yield break;
+        }
+
+        Vector3 impactPos = new Vector3(lockedX, Mathf.Round(impact.y / cellSize) * cellSize, 0f);
+        Vector3 passPos = new Vector3(lockedX, Mathf.Round(passEnd.y / cellSize) * cellSize, 0f);
+
+        yield return MoveRoot(projectile.transform, projectile.transform.position, impactPos, impactTravelTime, lockedX);
+
+        if (projectile != null)
+        {
+            TryResolveProjectile(projectile);
+        }
+
+        if (projectile != null)
+        {
+            yield return MoveRoot(projectile.transform, projectile.transform.position, passPos, passTravelTime, lockedX);
+        }
+
+        if (projectile != null)
+        {
+            Destroy(projectile);
+        }
+    }
+
+    private IEnumerator MoveRoot(Transform t, Vector3 from, Vector3 to, float duration, float lockedX)
+    {
+        float d = Mathf.Max(0.01f, duration);
+        float timer = 0f;
+
+        float fromY = from.y;
+        float toY = to.y;
+
+        while (timer < d)
+        {
+            timer += Time.deltaTime;
+            float p = Mathf.Clamp01(timer / d);
+
+            float y = Mathf.Lerp(fromY, toY, p);
+            float x = followFireLineWhileFlying ? GetFireLineWorldX() : lockedX;
+
+            t.position = new Vector3(x, y, 0f);
+            yield return null;
+        }
+
+        float endX = followFireLineWhileFlying ? GetFireLineWorldX() : lockedX;
+        t.position = new Vector3(endX, toY, 0f);
+    }
+
+    private void TryResolveProjectile(GameObject projectile)
+    {
+        if (worldGround == null || projectile == null)
+        {
+            return;
+        }
+
+        bool anyCleared = false;
+        ShapeBlock[] blocks = projectile.GetComponentsInChildren<ShapeBlock>();
 
         for (int i = 0; i < blocks.Length; i++)
         {
-            Vector3 lp = blocks[i].transform.localPosition;
-            minX = Mathf.Min(minX, lp.x);
-            maxX = Mathf.Max(maxX, lp.x);
-            minY = Mathf.Min(minY, lp.y);
-            maxY = Mathf.Max(maxY, lp.y);
+            ShapeBlock b = blocks[i];
+            if (b == null)
+            {
+                continue;
+            }
+
+            bool cleared = TryClearWithSnap(b.transform.position, b.IsBlack);
+            if (cleared)
+            {
+                anyCleared = true;
+                Destroy(b.gameObject);
+            }
         }
 
-        width = (maxX - minX) + cellSize;
-        height = (maxY - minY) + cellSize;
+        if (anyCleared)
+        {
+            worldGround.RefreshCompositeCollider();
+        }
     }
 
-    private Rect ViewportRectToWorldRect(Rect vpRect)
+    private bool TryClearWithSnap(Vector3 worldPos, bool isBlackBlock)
     {
-        Vector3 bl = ViewportToWorld(vpRect.xMin, vpRect.yMin);
-        Vector3 tr = ViewportToWorld(vpRect.xMax, vpRect.yMax);
+        Vector3 snapped = SnapToGroundGrid(worldPos);
 
-        return Rect.MinMaxRect(
-            Mathf.Min(bl.x, tr.x),
-            Mathf.Min(bl.y, tr.y),
-            Mathf.Max(bl.x, tr.x),
-            Mathf.Max(bl.y, tr.y)
-        );
+        if (worldGround.TryClearFeatureCell(snapped, isBlackBlock))
+        {
+            return true;
+        }
+
+        if (!snapToNearestFeatureCell)
+        {
+            return false;
+        }
+
+        float r = Mathf.Max(0f, clearSnapRadiusInCells) * cellSize;
+        if (r <= 0f)
+        {
+            return false;
+        }
+
+        Vector3[] offsets =
+        {
+            new Vector3(r, 0f, 0f),  new Vector3(-r, 0f, 0f),
+            new Vector3(0f, r, 0f),  new Vector3(0f, -r, 0f),
+            new Vector3(r, r, 0f),   new Vector3(-r, r, 0f),
+            new Vector3(r, -r, 0f),  new Vector3(-r, -r, 0f)
+        };
+
+        for (int i = 0; i < offsets.Length; i++)
+        {
+            if (worldGround.TryClearFeatureCell(snapped + offsets[i], isBlackBlock))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
-    private void SpawnBlack()
+    private GameObject CreateProjectileAssembly(string name, bool black, Vector3 worldPos, Vector2Int[] shape, bool centerOnLine)
     {
-        Vector3 p = ViewportToWorld(blackAreaViewport.center.x, blackAreaViewport.center.y);
+        GameObject root = new GameObject(name);
+        root.transform.SetParent(null, true);
+        root.transform.position = SnapToGroundGrid(worldPos);
 
-        // 黑块要去填坑 => 用“坑形状”
-        var shape = PickWhiteShape();
+        Vector2Int anchor = shape[0];
 
-        var assembly = CreateAssembly("BlackSupply", true, p, shape);
-        assembly.SetInSupplySlot(true);
-        assembly.DragStarted += OnBlackDragStarted;
-        blackAssemblies.Add(assembly);
+        int minX = int.MaxValue;
+        int maxX = int.MinValue;
+        int minY = int.MaxValue;
+        int maxY = int.MinValue;
+
+        for (int i = 0; i < shape.Length; i++)
+        {
+            minX = Mathf.Min(minX, shape[i].x);
+            maxX = Mathf.Max(maxX, shape[i].x);
+            minY = Mathf.Min(minY, shape[i].y);
+            maxY = Mathf.Max(maxY, shape[i].y);
+        }
+
+        float pivotX = centerOnLine ? (minX + maxX) * 0.5f : anchor.x;
+        float pivotY = centerOnLine ? (minY + maxY) * 0.5f : anchor.y;
+
+        for (int i = 0; i < shape.Length; i++)
+        {
+            Vector2Int c = shape[i];
+
+            GameObject go = new GameObject("Block");
+            go.transform.SetParent(root.transform, false);
+            go.transform.localPosition = new Vector3((c.x - pivotX) * cellSize, (c.y - pivotY) * cellSize, 0f);
+            go.transform.localScale = Vector3.one * cellSize;
+
+            ShapeBlock b = go.AddComponent<ShapeBlock>();
+            b.Initialize(black, runtimeSprite);
+
+            SpriteRenderer sr = go.GetComponent<SpriteRenderer>();
+            if (sr != null)
+            {
+                sr.sortingOrder = projectileSortingOrder;
+            }
+
+            Transform border = go.transform.Find("Border");
+            if (border != null)
+            {
+                SpriteRenderer borderSr = border.GetComponent<SpriteRenderer>();
+                if (borderSr != null)
+                {
+                    borderSr.sortingOrder = projectileSortingOrder - 1;
+                }
+            }
+        }
+
+        return root;
     }
 
-    private void SpawnWhite()
+    private void EnsureFireLine()
     {
-        Vector3 p = ViewportToWorld(whiteAreaViewport.center.x, whiteAreaViewport.center.y);
+        if (lineMaterial == null)
+        {
+            Shader shader = Shader.Find("Sprites/Default");
+            if (shader != null)
+            {
+                lineMaterial = new Material(shader);
+            }
+        }
 
-        // 白块要去填障碍 => 用“障碍形状”
-        var shape = PickBlackShape();
+        if (fireLine != null)
+        {
+            return;
+        }
 
-        var assembly = CreateAssembly("WhiteSupply", false, p, shape);
-        assembly.SetInSupplySlot(true);
-        assembly.DragStarted += OnWhiteDragStarted;
-        whiteAssemblies.Add(assembly);
+        GameObject go = new GameObject("RhythmFireLine");
+        go.transform.SetParent(transform, false);
+
+        fireLine = go.AddComponent<LineRenderer>();
+        fireLine.useWorldSpace = true;
+        fireLine.loop = false;
+        fireLine.positionCount = 2;
+        fireLine.startWidth = fireLineWidth;
+        fireLine.endWidth = fireLineWidth;
+        fireLine.startColor = fireLineColor;
+        fireLine.endColor = fireLineColor;
+        fireLine.sortingOrder = fireLineSortingOrder;
+        fireLine.numCapVertices = 0;
+        fireLine.numCornerVertices = 0;
+
+        if (lineMaterial != null)
+        {
+            fireLine.material = lineMaterial;
+        }
+    }
+
+    private void UpdateFireLine()
+    {
+        if (fireLine == null)
+        {
+            return;
+        }
+
+        Vector3 bottom = ViewportToWorld(fireLineViewportX, 0f);
+        Vector3 top = ViewportToWorld(fireLineViewportX, 1f);
+
+        fireLine.SetPosition(0, bottom);
+        fireLine.SetPosition(1, top);
+    }
+
+    private float GetFireLineWorldX()
+    {
+        return ViewportToWorld(fireLineViewportX, 0.5f).x;
+    }
+
+    private Vector3 ViewportToWorld(float vx, float vy)
+    {
+        if (cam == null)
+        {
+            cam = Camera.main;
+        }
+
+        if (cam == null)
+        {
+            return Vector3.zero;
+        }
+
+        float z = Mathf.Abs(cam.transform.position.z);
+        Vector3 w = cam.ViewportToWorldPoint(new Vector3(vx, vy, z));
+        w.z = 0f;
+        return w;
+    }
+
+    private float GetSurfaceY()
+    {
+        if (worldGround != null)
+        {
+            return worldGround.SurfaceY;
+        }
+
+        return 0f;
+    }
+
+    private float SnapX(float x)
+    {
+        return gridOriginX + Mathf.Round((x - gridOriginX) / cellSize) * cellSize;
+    }
+
+    private Vector3 SnapToGroundGrid(Vector3 p)
+    {
+        p.x = SnapX(p.x);
+        p.y = Mathf.Round(p.y / cellSize) * cellSize;
+        p.z = 0f;
+        return p;
     }
 
     private Vector2Int[] PickBlackShape()
@@ -275,62 +452,6 @@ public class ShapeSupplySpawner : MonoBehaviour
         return WhiteSupplyShapes[Random.Range(0, WhiteSupplyShapes.Length)];
     }
 
-    private void OnBlackDragStarted(DraggableAssembly assembly)
-    {
-        if (assembly == null) return;
-        assembly.DragStarted -= OnBlackDragStarted;
-        blackAssemblies.Remove(assembly);
-    }
-
-    private void OnWhiteDragStarted(DraggableAssembly assembly)
-    {
-        if (assembly == null) return;
-        assembly.DragStarted -= OnWhiteDragStarted;
-        whiteAssemblies.Remove(assembly);
-    }
-
-    private DraggableAssembly CreateAssembly(string name, bool black, Vector3 worldPos, Vector2Int[] shape)
-    {
-        var root = new GameObject(name);
-        root.transform.position = SnapToGroundGrid(worldPos);
-
-        var assembly = root.AddComponent<DraggableAssembly>();
-        var sprite = CreatePixelSprite();
-
-        Vector2Int anchor = shape[0];
-
-        for (int i = 0; i < shape.Length; i++)
-        {
-            var c = shape[i];
-            var go = new GameObject("Block");
-            go.transform.SetParent(root.transform, false);
-            go.transform.localPosition = new Vector3((c.x - anchor.x) * cellSize, (c.y - anchor.y) * cellSize, 0f);
-            go.transform.localScale = Vector3.one * cellSize;
-
-            var b = go.AddComponent<ShapeBlock>();
-            b.Initialize(black, sprite);
-        }
-
-        return assembly;
-    }
-
-    private Vector3 ViewportToWorld(float vx, float vy)
-    {
-        if (cam == null) cam = Camera.main;
-        float z = Mathf.Abs(cam.transform.position.z);
-        var w = cam.ViewportToWorldPoint(new Vector3(vx, vy, z));
-        w.z = 0f;
-        return w;
-    }
-
-    private Vector3 SnapToGroundGrid(Vector3 p)
-    {
-        p.x = gridOriginX + Mathf.Round((p.x - gridOriginX) / cellSize) * cellSize;
-        p.y = Mathf.Round(p.y / cellSize) * cellSize;
-        p.z = 0f;
-        return p;
-    }
-
     private Sprite CreatePixelSprite()
     {
         Texture2D tex = new Texture2D(1, 1, TextureFormat.RGBA32, false);
@@ -339,95 +460,11 @@ public class ShapeSupplySpawner : MonoBehaviour
         return Sprite.Create(tex, new Rect(0f, 0f, 1f, 1f), new Vector2(0.5f, 0.5f), 1f);
     }
 
-    private void EnsureAreaFrames()
-    {
-        if (!showAreaFrame)
-        {
-            return;
-        }
-
-        if (frameMaterial == null)
-        {
-            Shader shader = Shader.Find("Sprites/Default");
-            if (shader != null)
-            {
-                frameMaterial = new Material(shader);
-            }
-        }
-
-        if (blackFrame == null)
-        {
-            blackFrame = CreateAreaFrame("BlackAreaFrame", blackAreaFrameColor, 120);
-        }
-
-        if (whiteFrame == null)
-        {
-            whiteFrame = CreateAreaFrame("WhiteAreaFrame", whiteAreaFrameColor, 120);
-        }
-    }
-
-    private LineRenderer CreateAreaFrame(string name, Color color, int order)
-    {
-        var go = new GameObject(name);
-        go.transform.SetParent(transform, false);
-
-        var lr = go.AddComponent<LineRenderer>();
-        lr.loop = true;
-        lr.useWorldSpace = true;
-        lr.positionCount = 4;
-        lr.startWidth = frameWidth;
-        lr.endWidth = frameWidth;
-        lr.startColor = color;
-        lr.endColor = color;
-        lr.sortingOrder = order;
-        lr.numCapVertices = 0;
-        lr.numCornerVertices = 0;
-
-        if (frameMaterial != null)
-        {
-            lr.material = frameMaterial;
-        }
-
-        return lr;
-    }
-
-    private void UpdateAreaFrames()
-    {
-        if (!showAreaFrame)
-        {
-            if (blackFrame != null) blackFrame.enabled = false;
-            if (whiteFrame != null) whiteFrame.enabled = false;
-            return;
-        }
-
-        EnsureAreaFrames();
-
-        if (blackFrame != null)
-        {
-            blackFrame.enabled = true;
-            SetFrameRect(blackFrame, ViewportRectToWorldRect(blackAreaViewport));
-        }
-
-        if (whiteFrame != null)
-        {
-            whiteFrame.enabled = true;
-            SetFrameRect(whiteFrame, ViewportRectToWorldRect(whiteAreaViewport));
-        }
-    }
-
-    private void SetFrameRect(LineRenderer lr, Rect r)
-    {
-        lr.SetPosition(0, new Vector3(r.xMin, r.yMin, 0f));
-        lr.SetPosition(1, new Vector3(r.xMin, r.yMax, 0f));
-        lr.SetPosition(2, new Vector3(r.xMax, r.yMax, 0f));
-        lr.SetPosition(3, new Vector3(r.xMax, r.yMin, 0f));
-    }
-
     private void OnDestroy()
     {
-        if (frameMaterial != null)
+        if (lineMaterial != null)
         {
-            Destroy(frameMaterial);
+            Destroy(lineMaterial);
         }
     }
 }
