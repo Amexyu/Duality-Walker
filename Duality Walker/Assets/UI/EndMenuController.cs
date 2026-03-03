@@ -2,30 +2,18 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
-public class MainMenuController : MonoBehaviour
+public class EndMenuController : MonoBehaviour
 {
     [Header("Buttons")]
-    [SerializeField] private Button startButton;
-    [SerializeField] private Button quitButton;
     [SerializeField] private Button restartButton;
     [SerializeField] private Button backButton;
 
-    [Header("Scene")]
+    [Header("Scene Names")]
     [SerializeField] private string gameSceneName = "Game";
     [SerializeField] private string mainMenuSceneName = "MainMenu";
 
     private void Awake()
     {
-        if (startButton != null)
-        {
-            startButton.onClick.AddListener(OnClickStart);
-        }
-
-        if (quitButton != null)
-        {
-            quitButton.onClick.AddListener(OnClickQuit);
-        }
-
         if (restartButton != null)
         {
             restartButton.onClick.AddListener(OnClickRestart);
@@ -39,16 +27,6 @@ public class MainMenuController : MonoBehaviour
 
     private void OnDestroy()
     {
-        if (startButton != null)
-        {
-            startButton.onClick.RemoveListener(OnClickStart);
-        }
-
-        if (quitButton != null)
-        {
-            quitButton.onClick.RemoveListener(OnClickQuit);
-        }
-
         if (restartButton != null)
         {
             restartButton.onClick.RemoveListener(OnClickRestart);
@@ -60,22 +38,11 @@ public class MainMenuController : MonoBehaviour
         }
     }
 
-    public void OnClickStart()
-    {
-        if (string.IsNullOrEmpty(gameSceneName))
-        {
-            Debug.LogWarning("[MainMenuController] gameSceneName 为空。", this);
-            return;
-        }
-
-        SceneManager.LoadScene(gameSceneName);
-    }
-
     public void OnClickRestart()
     {
         if (string.IsNullOrEmpty(gameSceneName))
         {
-            Debug.LogWarning("[MainMenuController] gameSceneName 为空。", this);
+            Debug.LogWarning("[EndMenuController] gameSceneName 为空。", this);
             return;
         }
 
@@ -86,19 +53,10 @@ public class MainMenuController : MonoBehaviour
     {
         if (string.IsNullOrEmpty(mainMenuSceneName))
         {
-            Debug.LogWarning("[MainMenuController] mainMenuSceneName 为空。", this);
+            Debug.LogWarning("[EndMenuController] mainMenuSceneName 为空。", this);
             return;
         }
 
         SceneManager.LoadScene(mainMenuSceneName);
-    }
-
-    public void OnClickQuit()
-    {
-#if UNITY_EDITOR
-        UnityEditor.EditorApplication.isPlaying = false;
-#else
-        Application.Quit();
-#endif
     }
 }

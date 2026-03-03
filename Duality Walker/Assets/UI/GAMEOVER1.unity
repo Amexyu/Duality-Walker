@@ -176,7 +176,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: WALLKER
+  m_text: OVER
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -312,7 +312,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: DU    LITY
+  m_text: GAME
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -536,7 +536,7 @@ GameObject:
   - component: {fileID: 881434062}
   - component: {fileID: 881434061}
   m_Layer: 5
-  m_Name: Text (TMP)0
+  m_Name: Text (TMP)RE
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -581,7 +581,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: START
+  m_text: Restart
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -887,7 +887,7 @@ GameObject:
   - component: {fileID: 1010457382}
   - component: {fileID: 1010457383}
   m_Layer: 5
-  m_Name: QUITButton
+  m_Name: barkButton
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1062,7 +1062,7 @@ GameObject:
   - component: {fileID: 1019114685}
   - component: {fileID: 1019114684}
   m_Layer: 5
-  m_Name: Text (TMP)
+  m_Name: Text (TMP)BACK
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1107,7 +1107,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: QUIT
+  m_text: Back
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -1276,7 +1276,7 @@ GameObject:
   - component: {fileID: 1258619969}
   - component: {fileID: 1258619970}
   m_Layer: 5
-  m_Name: STARTButton
+  m_Name: reButton
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1519,8 +1519,8 @@ GameObject:
   - component: {fileID: 1666421791}
   - component: {fileID: 1666421790}
   - component: {fileID: 1666421794}
-  - component: {fileID: 1666421795}
   - component: {fileID: 1666421796}
+  - component: {fileID: 1666421797}
   m_Layer: 5
   m_Name: Canvas
   m_TagString: Untagged
@@ -1643,21 +1643,6 @@ MonoBehaviour:
   randomTurnAngle: 45
   jitterStrength: 20
   useUnscaledTime: 1
---- !u!114 &1666421795
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1666421789}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9806266595ce6e44198e310f997523e3, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  startButton: {fileID: 1258619965}
-  quitButton: {fileID: 1010457379}
-  gameSceneName: "\u7248\u672C2"
 --- !u!114 &1666421796
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1673,83 +1658,24 @@ MonoBehaviour:
   m_EffectColor: {r: 0, g: 0, b: 0, a: 1}
   m_EffectDistance: {x: 2, y: 2}
   m_UseGraphicAlpha: 0
---- !u!1001 &5237273306743693339
-PrefabInstance:
+--- !u!114 &1666421797
+MonoBehaviour:
   m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 0}
-    m_Modifications:
-    - target: {fileID: 4538453368189396587, guid: d1ee3a6717287aa45b0ffdfe95ed68dc, type: 3}
-      propertyPath: m_Name
-      value: UINPC
-      objectReference: {fileID: 0}
-    - target: {fileID: 6109774167159235201, guid: d1ee3a6717287aa45b0ffdfe95ed68dc, type: 3}
-      propertyPath: m_LocalScale.x
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 6109774167159235201, guid: d1ee3a6717287aa45b0ffdfe95ed68dc, type: 3}
-      propertyPath: m_LocalScale.y
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 6109774167159235201, guid: d1ee3a6717287aa45b0ffdfe95ed68dc, type: 3}
-      propertyPath: m_LocalScale.z
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 6109774167159235201, guid: d1ee3a6717287aa45b0ffdfe95ed68dc, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: -4.18
-      objectReference: {fileID: 0}
-    - target: {fileID: 6109774167159235201, guid: d1ee3a6717287aa45b0ffdfe95ed68dc, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 6109774167159235201, guid: d1ee3a6717287aa45b0ffdfe95ed68dc, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: 0.044769287
-      objectReference: {fileID: 0}
-    - target: {fileID: 6109774167159235201, guid: d1ee3a6717287aa45b0ffdfe95ed68dc, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 6109774167159235201, guid: d1ee3a6717287aa45b0ffdfe95ed68dc, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 6109774167159235201, guid: d1ee3a6717287aa45b0ffdfe95ed68dc, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 6109774167159235201, guid: d1ee3a6717287aa45b0ffdfe95ed68dc, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 6109774167159235201, guid: d1ee3a6717287aa45b0ffdfe95ed68dc, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 6109774167159235201, guid: d1ee3a6717287aa45b0ffdfe95ed68dc, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 6109774167159235201, guid: d1ee3a6717287aa45b0ffdfe95ed68dc, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 9056879747763018604, guid: d1ee3a6717287aa45b0ffdfe95ed68dc, type: 3}
-      propertyPath: blackSquareInWhiteArea
-      value: 
-      objectReference: {fileID: 0}
-    - target: {fileID: 9056879747763018604, guid: d1ee3a6717287aa45b0ffdfe95ed68dc, type: 3}
-      propertyPath: whiteSquareInBlackArea
-      value: 
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: d1ee3a6717287aa45b0ffdfe95ed68dc, type: 3}
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1666421789}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9806266595ce6e44198e310f997523e3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  startButton: {fileID: 0}
+  quitButton: {fileID: 0}
+  restartButton: {fileID: 1258619965}
+  backButton: {fileID: 1010457379}
+  gameSceneName: "\u7248\u672C2"
+  mainMenuSceneName: STARTUI
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -1758,4 +1684,3 @@ SceneRoots:
   - {fileID: 1666421793}
   - {fileID: 1378570762}
   - {fileID: 796326591}
-  - {fileID: 5237273306743693339}
