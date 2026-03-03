@@ -11,9 +11,22 @@ public class ShapeSupplySpawner : MonoBehaviour
 
     [Header("提示线（屏幕中线）")]
     [SerializeField] private float fireLineViewportX = 0.5f;
-    [SerializeField] private Color fireLineColor = new Color(1f, 0.9f, 0.2f, 1f);
     [SerializeField] private float fireLineWidth = 0.04f;
     [SerializeField] private int fireLineSortingOrder = 200;
+
+    // 自动反色（基于上下区域底色）
+    [SerializeField] private bool autoInvertFireLineColor = true;
+    [SerializeField] private Color upperAreaBaseColor = Color.white; // 上区底色（默认白）
+    [SerializeField] private Color lowerAreaBaseColor = Color.black; // 下区底色（默认黑）
+    [SerializeField] private bool areaSwapped = false;               // 未来反转时改这个值
+
+    // 自动反色关闭时使用的手动颜色
+    [SerializeField] private Color upperFireLineColor = Color.black;
+    [SerializeField] private Color lowerFireLineColor = Color.white;
+
+    // 防串区间隙（单位：世界坐标）
+    // <=0 时自动按线宽计算
+    [SerializeField] private float splitGapWorld = -1f;
 
     [Header("发射参数")]
     [SerializeField] private float launchOffsetInCells = 4f;   // 从黑白交界线两侧起射的偏移
@@ -34,9 +47,6 @@ public class ShapeSupplySpawner : MonoBehaviour
     private float gridOriginX;
     private float nextShootTime;
     private Sprite runtimeSprite;
-
-    private Material lineMaterial;
-    private LineRenderer fireLine;
 
     // 黑块：与 ground 的 ObstacleShapes 对齐（用于白色发射物去填障碍）
     private static readonly Vector2Int[][] BlackSupplyShapes =
@@ -335,6 +345,15 @@ public class ShapeSupplySpawner : MonoBehaviour
         return root;
     }
 
+    // ====== 替换/新增字段（放在提示线相关字段附近）======
+    private Material lineMaterial;
+    private LineRenderer upperFireLine;
+    private LineRenderer lowerFireLine;
+
+    [SerializeField] private float fireLineExtraYOffsetInCells = 0f; // 在真实分界(半格)基础上的微调
+
+
+    // ====== 用这个替换 EnsureFireLine ======
     private void EnsureFireLine()
     {
         if (lineMaterial == null)
@@ -346,44 +365,103 @@ public class ShapeSupplySpawner : MonoBehaviour
             }
         }
 
-        if (fireLine != null)
+        if (upperFireLine == null)
         {
-            return;
+            upperFireLine = CreateFireLineRenderer("RhythmFireLine_Upper");
         }
 
-        GameObject go = new GameObject("RhythmFireLine");
+        if (lowerFireLine == null)
+        {
+            lowerFireLine = CreateFireLineRenderer("RhythmFireLine_Lower");
+        }
+
+        RefreshFireLineColors();
+    }
+
+    private LineRenderer CreateFireLineRenderer(string name)
+    {
+        GameObject go = new GameObject(name);
         go.transform.SetParent(transform, false);
 
-        fireLine = go.AddComponent<LineRenderer>();
-        fireLine.useWorldSpace = true;
-        fireLine.loop = false;
-        fireLine.positionCount = 2;
-        fireLine.startWidth = fireLineWidth;
-        fireLine.endWidth = fireLineWidth;
-        fireLine.startColor = fireLineColor;
-        fireLine.endColor = fireLineColor;
-        fireLine.sortingOrder = fireLineSortingOrder;
-        fireLine.numCapVertices = 0;
-        fireLine.numCornerVertices = 0;
+        LineRenderer lr = go.AddComponent<LineRenderer>();
+        lr.useWorldSpace = true;
+        lr.loop = false;
+        lr.positionCount = 2;
+        lr.startWidth = fireLineWidth;
+        lr.endWidth = fireLineWidth;
+        lr.sortingOrder = fireLineSortingOrder;
+        lr.numCapVertices = 0;
+        lr.numCornerVertices = 0;
 
         if (lineMaterial != null)
         {
-            fireLine.material = lineMaterial;
+            lr.material = lineMaterial;
         }
+
+        return lr;
     }
 
-    private void UpdateFireLine()
+
+    // ====== 新增：自动反色与区域反转接口 ======
+    public void SetAreaSwapped(bool swapped)
     {
-        if (fireLine == null)
+        areaSwapped = swapped;
+        RefreshFireLineColors();
+    }
+
+    private void RefreshFireLineColors()
+    {
+        if (upperFireLine == null || lowerFireLine == null)
         {
             return;
         }
 
-        Vector3 bottom = ViewportToWorld(fireLineViewportX, 0f);
-        Vector3 top = ViewportToWorld(fireLineViewportX, 1f);
+        Color upperArea = areaSwapped ? lowerAreaBaseColor : upperAreaBaseColor;
+        Color lowerArea = areaSwapped ? upperAreaBaseColor : lowerAreaBaseColor;
 
-        fireLine.SetPosition(0, bottom);
-        fireLine.SetPosition(1, top);
+        Color upperLine = autoInvertFireLineColor ? InvertKeepAlpha(upperArea) : upperFireLineColor;
+        Color lowerLine = autoInvertFireLineColor ? InvertKeepAlpha(lowerArea) : lowerFireLineColor;
+
+        upperFireLine.startColor = upperLine;
+        upperFireLine.endColor = upperLine;
+        lowerFireLine.startColor = lowerLine;
+        lowerFireLine.endColor = lowerLine;
+    }
+
+    private static Color InvertKeepAlpha(Color c)
+    {
+        return new Color(1f - c.r, 1f - c.g, 1f - c.b, c.a);
+    }
+
+
+    // ====== 用这个替换 UpdateFireLine（防串区）======
+    private void UpdateFireLine()
+    {
+        if (upperFireLine == null || lowerFireLine == null)
+        {
+            return;
+        }
+
+        RefreshFireLineColors();
+
+        float x = GetFireLineWorldX();
+        float splitY = GetSurfaceY() + 0.5f * cellSize + fireLineExtraYOffsetInCells * cellSize;
+
+        Vector3 top = ViewportToWorld(fireLineViewportX, 1f);
+        Vector3 bottom = ViewportToWorld(fireLineViewportX, 0f);
+
+        float gap = splitGapWorld > 0f ? splitGapWorld : Mathf.Max(fireLineWidth * 0.8f, 0.02f);
+        float upperStartY = splitY + gap;
+        float lowerEndY = splitY - gap;
+
+        if (upperStartY > top.y) upperStartY = top.y;
+        if (lowerEndY < bottom.y) lowerEndY = bottom.y;
+
+        upperFireLine.SetPosition(0, new Vector3(x, upperStartY, 0f));
+        upperFireLine.SetPosition(1, new Vector3(x, top.y, 0f));
+
+        lowerFireLine.SetPosition(0, new Vector3(x, bottom.y, 0f));
+        lowerFireLine.SetPosition(1, new Vector3(x, lowerEndY, 0f));
     }
 
     private float GetFireLineWorldX()

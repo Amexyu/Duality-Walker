@@ -54,6 +54,15 @@ public class ground : MonoBehaviour
     [SerializeField] private Color pitBorderColor = Color.black;
     [SerializeField] private Color filledPitBorderColor = Color.white;
 
+    [Header("ÕÏ°­Ìî²¹ÑÕÉ«½¥±ä")]
+    [SerializeField] private bool useObstacleFillColorTransition = true;
+    [SerializeField] private float obstacleFillColorTransitionDuration = 0.2f;
+    [SerializeField] private bool fadeOutObstacleBorderOnFill = true;
+
+    [Header("¿ÓÌî²¹ÑÕÉ«½¥±ä")]
+    [SerializeField] private bool usePitFillColorTransition = true;
+    [SerializeField] private float pitFillColorTransitionDuration = 0.2f;
+
     private readonly Queue<ColumnRecord> spawnedColumns = new();
     private readonly Dictionary<int, GameObject> columnRoots = new();
     private readonly Dictionary<Vector2Int, GameObject> cellObjects = new();
@@ -636,8 +645,16 @@ public class ground : MonoBehaviour
 
         SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
         sr.sprite = runtimeSprite;
-        sr.color = Color.black;
         sr.sortingOrder = 0;
+
+        if (usePitFillColorTransition)
+        {
+            sr.color = Color.white; // ÏÈ°×£¬ÔÙ½¥±äµ½ºÚ
+        }
+        else
+        {
+            sr.color = Color.black;
+        }
 
         TryApplyFeatureBorder(go, sr, filledPitBorderColor);
 
@@ -650,6 +667,11 @@ public class ground : MonoBehaviour
 
         cellObjects[key] = go;
         colliderDirty = true;
+
+        if (usePitFillColorTransition)
+        {
+            StartCoroutine(AnimatePitFillToBlack(go, sr));
+        }
 
         TryLiftPlayerFromFilledPit(go.transform.position.y);
     }
@@ -743,36 +765,137 @@ public class ground : MonoBehaviour
 
     private void ReplaceObstacleWithWhiteCell(GameObject obstacleCell, Vector2Int key, Vector3 worldPos)
     {
-        Transform parent = obstacleCell != null ? obstacleCell.transform.parent : transform;
-
-        if (obstacleCell != null)
+        if (obstacleCell == null)
         {
-            if (obstacleCell.GetComponent<Collider2D>() != null)
-            {
-                colliderDirty = true;
-            }
-
-            cellObjects.Remove(key);
-            Destroy(obstacleCell);
+            return;
         }
 
-        GameObject go = new("White");
-        go.transform.SetParent(parent, true);
-        go.transform.position = new Vector3(
-            ColumnToWorldX(WorldXToCellIndex(worldPos.x)),
-            Mathf.RoundToInt(worldPos.y / blockSize) * blockSize,
-            0f
-        );
-        go.transform.localScale = new Vector3(blockSize, blockSize, 1f);
+        var marker = obstacleCell.GetComponent<FeatureCell>();
+        if(marker != null)
+        {
+            marker.cellType = FeatureCellType.None;
+        }
 
-        SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
+        var col = obstacleCell.GetComponent<Collider2D>();
+        if (col != null)
+        {
+            Destroy(col);
+            colliderDirty = true;
+        }
+
+        obstacleCell.name = "White";
+
+        var sr = obstacleCell.GetComponent<SpriteRenderer>();
+        if (sr == null)
+        {
+            sr = obstacleCell.AddComponent<SpriteRenderer>();
+        }
+
         sr.sprite = runtimeSprite;
-        sr.color = Color.white;
-        sr.sortingOrder = 0;
 
-        FeatureCell marker = go.AddComponent<FeatureCell>();
-        marker.cellType = FeatureCellType.None;
+        if (useObstacleFillColorTransition)
+        {
+            StartCoroutine(AnimateObstacleFillToWhite(obstacleCell, sr));
+        }
+        else
+        {
+            sr.color = Color.white;
 
-        cellObjects[key] = go;
+            Transform border = obstacleCell.transform.Find("Border");
+            if (border != null)
+            {
+                Destroy(border.gameObject);
+            }
+        }
+    }
+
+    private System.Collections.IEnumerator AnimateObstacleFillToWhite(GameObject host, SpriteRenderer sr)
+    {
+        if (host == null || sr == null)
+        {
+            yield break;
+        }
+
+        float duration = Mathf.Max(0.01f, obstacleFillColorTransitionDuration);
+        float t = 0f;
+
+        Color fromColor = sr.color;
+        Color toColor = Color.white;
+
+        SpriteRenderer borderSr = null;
+        Transform border = host.transform.Find("Border");
+        if (border != null)
+        {
+            borderSr = border.GetComponent<SpriteRenderer>();
+        }
+
+        Color borderFrom = borderSr != null ? borderSr.color : Color.clear;
+        Color borderTo = new Color(borderFrom.r, borderFrom.g, borderFrom.b, 0f);
+
+        while (t < duration)
+        {
+            t += Time.deltaTime;
+            float p = Mathf.Clamp01(t / duration);
+            float eased = p * p * (3f - 2f * p); // SmoothStep
+
+            if (sr != null)
+            {
+                sr.color = Color.Lerp(fromColor, toColor, eased);
+            }
+
+            if (fadeOutObstacleBorderOnFill && borderSr != null)
+            {
+                borderSr.color = Color.Lerp(borderFrom, borderTo, eased);
+            }
+
+            yield return null;
+        }
+
+        if (sr != null)
+        {
+            sr.color = toColor;
+        }
+
+        if (fadeOutObstacleBorderOnFill)
+        {
+            Transform currentBorder = host.transform.Find("Border");
+            if (currentBorder != null)
+            {
+                Destroy(currentBorder.gameObject);
+            }
+        }
+    }
+
+    private System.Collections.IEnumerator AnimatePitFillToBlack(GameObject host, SpriteRenderer sr)
+    {
+        if (host == null || sr == null)
+        {
+            yield break;
+        }
+
+        float duration = Mathf.Max(0.01f, pitFillColorTransitionDuration);
+        float t = 0f;
+
+        Color fromColor = sr.color;
+        Color toColor = Color.black;
+
+        while (t < duration)
+        {
+            t += Time.deltaTime;
+            float p = Mathf.Clamp01(t / duration);
+            float eased = p * p * (3f - 2f * p); // SmoothStep
+
+            if (sr != null)
+            {
+                sr.color = Color.Lerp(fromColor, toColor, eased);
+            }
+
+            yield return null;
+        }
+
+        if (sr != null)
+        {
+            sr.color = toColor;
+        }
     }
 }
