@@ -38,6 +38,12 @@ public class BLACKMOVE : MonoBehaviour
     [Header("玩家显示层级")]
     [SerializeField] private int playerSortingOrder = 50;
 
+    [Header("玩家材质切换")]
+    [SerializeField] private Material normalMaterial;
+    [SerializeField] private Material flippedMaterial;
+    [SerializeField] private Color normalTintColor = Color.white;
+    [SerializeField] private Color flippedTintColor = Color.white;
+
     [Header("Animator参数动画（可选）")]
     [SerializeField] private Animator animator;
     [SerializeField] private string animSpeedXParam = "SpeedX";
@@ -78,6 +84,11 @@ public class BLACKMOVE : MonoBehaviour
     [SerializeField] private float enterTargetOffsetX = 0f;
     [SerializeField] private bool lockCameraDuringEnter = true;
 
+    [Header("区域翻转")]
+    [SerializeField] private bool enableAutoFlip = true;
+    [SerializeField] private float flipMinInterval = 8f;
+    [SerializeField] private float flipMaxInterval = 16f;
+
     private enum FrameAnimMode
     {
         None,
@@ -88,6 +99,9 @@ public class BLACKMOVE : MonoBehaviour
     private Rigidbody2D rb;
     private Camera mainCamera;
     private Collider2D bodyCol;
+    private ground worldGround;
+    private ShapeSupplySpawner shapeSpawner;
+    private SpriteRenderer[] playerRenderers;
 
     private float camVelX;
     private float camVelY;
@@ -134,6 +148,10 @@ public class BLACKMOVE : MonoBehaviour
     private float distanceAccumulated;
     private float distanceLastX;
 
+    private bool isFlipped;
+    private float nextFlipTime;
+    private float baseGravityScale;
+
     private void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
@@ -170,6 +188,8 @@ public class BLACKMOVE : MonoBehaviour
         rb.interpolation = RigidbodyInterpolation2D.Interpolate;
         rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
 
+        baseGravityScale = rb.gravityScale;
+
         var mat = new PhysicsMaterial2D("PlayerNoFriction");
         mat.friction = 0f;
         mat.bounciness = 0f;
@@ -184,7 +204,9 @@ public class BLACKMOVE : MonoBehaviour
         lastX = rb.position.x;
 
         CacheAnimatorParams();
+        CachePlayerRenderers();
         ApplyPlayerSortingOrder();
+        ApplyPlayerMaterial(false);
     }
 
     private void ResetRuntimeState()
@@ -200,12 +222,17 @@ public class BLACKMOVE : MonoBehaviour
         enterTargetX = 0f;
         fixedCameraXOnEnter = 0f;
 
+        isFlipped = false;
+
         if (rb != null)
         {
             rb.simulated = true;
             rb.linearVelocity = Vector2.zero;
             rb.angularVelocity = 0f;
+            rb.gravityScale = baseGravityScale;
         }
+
+        transform.localRotation = Quaternion.identity;
 
         lastX = rb != null ? rb.position.x : transform.position.x;
         distanceStartX = lastX;
@@ -216,6 +243,7 @@ public class BLACKMOVE : MonoBehaviour
         RunDistanceStore.Reset();
 
         startMoveTimer = Mathf.Max(0f, startMoveDelay);
+        ApplyPlayerMaterial(false);
     }
 
     private void OnEnable()
@@ -245,6 +273,8 @@ public class BLACKMOVE : MonoBehaviour
         Time.timeScale = 1f;
         AudioListener.pause = false;
         ResetRuntimeState();
+        ApplyFlipState(false, true);
+        ScheduleNextFlip();
     }
 
     private void Start()
@@ -255,11 +285,16 @@ public class BLACKMOVE : MonoBehaviour
             return;
         }
 
+        worldGround = FindFirstObjectByType<ground>();
+        shapeSpawner = FindFirstObjectByType<ShapeSupplySpawner>();
+
         baseCamY = mainCamera.transform.position.y;
         baseCamZ = mainCamera.transform.position.z;
         cameraTrackX = rb.position.x + lookAheadX;
 
         BeginEnterFromLeftIfNeeded();
+        ApplyFlipState(false, true);
+        ScheduleNextFlip();
     }
 
     private void BeginEnterFromLeftIfNeeded()
@@ -340,6 +375,8 @@ public class BLACKMOVE : MonoBehaviour
             return;
         }
 
+        HandleAutoFlip();
+
         if (!canCountDistance)
         {
             distanceCountTimer -= Time.fixedDeltaTime;
@@ -371,7 +408,7 @@ public class BLACKMOVE : MonoBehaviour
             {
                 var enterV = rb.linearVelocity;
                 enterV.x = enterRunSpeed;
-                enterV.y = Mathf.Max(enterV.y, -maxFallSpeed);
+                ApplyVerticalSpeedLimit(ref enterV);
                 rb.linearVelocity = enterV;
             }
             else
@@ -431,7 +468,7 @@ public class BLACKMOVE : MonoBehaviour
 
         var v = rb.linearVelocity;
         v.x = currentMoveSpeed;
-        v.y = Mathf.Max(v.y, -maxFallSpeed);
+        ApplyVerticalSpeedLimit(ref v);
         rb.linearVelocity = v;
 
         if (!useRunFrameAnimation)
@@ -441,6 +478,103 @@ public class BLACKMOVE : MonoBehaviour
         }
 
         lastX = rb.position.x;
+    }
+
+    private void HandleAutoFlip()
+    {
+        if (!enableAutoFlip || isEnteringFromLeft || startMoveTimer > 0f)
+        {
+            return;
+        }
+
+        if (Time.time < nextFlipTime)
+        {
+            return;
+        }
+
+        SetFlipped(!isFlipped);
+        ScheduleNextFlip();
+    }
+
+    private void ScheduleNextFlip()
+    {
+        float max = Mathf.Max(flipMinInterval, flipMaxInterval);
+        nextFlipTime = Time.time + Random.Range(flipMinInterval, max);
+    }
+
+    private void SetFlipped(bool flipped)
+    {
+        if (isFlipped == flipped)
+        {
+            return;
+        }
+
+        isFlipped = flipped;
+        ApplyFlipState(isFlipped, false);
+    }
+
+    private void ApplyFlipState(bool flipped, bool skipMirror)
+    {
+        if (rb != null)
+        {
+            rb.gravityScale = baseGravityScale * (flipped ? -1f : 1f);
+        }
+
+        transform.localRotation = Quaternion.Euler(flipped ? 180f : 0f, 0f, 0f);
+
+        if (!skipMirror)
+        {
+            float splitY = GetSplitY();
+            Vector2 p = rb != null ? rb.position : (Vector2)transform.position;
+            p.y = splitY - (p.y - splitY);
+
+            if (rb != null)
+            {
+                rb.position = p;
+                Vector2 v = rb.linearVelocity;
+                v.y = -v.y;
+                ApplyVerticalSpeedLimit(ref v);
+                rb.linearVelocity = v;
+            }
+            else
+            {
+                transform.position = p;
+            }
+        }
+
+        if (worldGround != null)
+        {
+            worldGround.SetAreaSwapped(flipped);
+        }
+
+        if (shapeSpawner != null)
+        {
+            shapeSpawner.SetAreaSwapped(flipped);
+        }
+
+        ApplyPlayerMaterial(flipped);
+    }
+
+    private float GetSplitY()
+    {
+        if (worldGround != null)
+        {
+            return worldGround.SplitY;
+        }
+
+        return transform.position.y;
+    }
+
+    private void ApplyVerticalSpeedLimit(ref Vector2 v)
+    {
+        if (isFlipped)
+        {
+            v.y = Mathf.Min(v.y, maxFallSpeed);
+        }
+        else
+        {
+            v.y = Mathf.Max(v.y, -maxFallSpeed);
+        }
     }
 
     private bool IsBehindCenter()
@@ -537,10 +671,12 @@ public class BLACKMOVE : MonoBehaviour
             return;
         }
 
+        bool falling = isFlipped ? velocity.y > 0.01f : velocity.y < -0.01f;
+
         if (hasAnimSpeedX) animator.SetFloat(animSpeedXHash, Mathf.Abs(velocity.x));
         if (hasAnimSpeedY) animator.SetFloat(animSpeedYHash, velocity.y);
         if (hasAnimGrounded) animator.SetBool(animGroundedHash, grounded);
-        if (hasAnimFalling) animator.SetBool(animFallingHash, velocity.y < -0.01f && !grounded);
+        if (hasAnimFalling) animator.SetBool(animFallingHash, falling && !grounded);
         if (hasAnimBlocked) animator.SetBool(animBlockedHash, blocked);
         if (hasAnimBoost) animator.SetBool(animBoostHash, boosting);
     }
@@ -666,6 +802,48 @@ public class BLACKMOVE : MonoBehaviour
         }
     }
 
+    private void CachePlayerRenderers()
+    {
+        playerRenderers = GetComponentsInChildren<SpriteRenderer>(true);
+    }
+
+    private void ApplyPlayerMaterial(bool flipped)
+    {
+        if (playerRenderers == null || playerRenderers.Length == 0)
+        {
+            return;
+        }
+
+        Material targetMaterial = flipped ? flippedMaterial : normalMaterial;
+        Color targetColor = flipped ? flippedTintColor : normalTintColor;
+
+        for (int i = 0; i < playerRenderers.Length; i++)
+        {
+            SpriteRenderer renderer = playerRenderers[i];
+            if (renderer == null)
+            {
+                continue;
+            }
+
+            if (targetMaterial != null)
+            {
+                renderer.sharedMaterial = targetMaterial;
+            }
+
+            renderer.color = targetColor;
+        }
+
+        if (targetImage != null)
+        {
+            targetImage.color = targetColor;
+        }
+
+        if (targetSpriteRenderer != null)
+        {
+            targetSpriteRenderer.color = targetColor;
+        }
+    }
+
     private bool IsGrounded()
     {
         if (bodyCol == null)
@@ -680,7 +858,8 @@ public class BLACKMOVE : MonoBehaviour
         );
 
         Vector2 origin = new Vector2(b.center.x, b.min.y + size.y * 0.5f);
-        RaycastHit2D hit = Physics2D.BoxCast(origin, size, 0f, Vector2.down, groundedCheckDistance, groundMask);
+        Vector2 dir = isFlipped ? Vector2.up : Vector2.down;
+        RaycastHit2D hit = Physics2D.BoxCast(origin, size, 0f, dir, groundedCheckDistance, groundMask);
         return hit.collider != null;
     }
 

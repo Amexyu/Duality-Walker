@@ -376,6 +376,7 @@ MonoBehaviour:
   cameraFrontStartOffsetColumns: 2
   cameraFrontRightPaddingColumns: 2
   surfaceSnapTolerance: 0.01
+  blockOverlap: 0.01
   compositeRebuildInterval: 0.08
   testMode: 0
   testObstacleShapeIndex: 8
@@ -392,6 +393,7 @@ MonoBehaviour:
   fadeOutObstacleBorderOnFill: 1
   usePitFillColorTransition: 1
   pitFillColorTransitionDuration: 0.2
+  areaSwapped: 0
 --- !u!4 &859229876
 Transform:
   m_ObjectHideFlags: 0
@@ -904,9 +906,57 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 3495040307594490236, guid: eaf4d38df4f7b4c4d8ada7d69889571d, type: 3}
+      propertyPath: m_Color.b
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3495040307594490236, guid: eaf4d38df4f7b4c4d8ada7d69889571d, type: 3}
+      propertyPath: m_Color.g
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3495040307594490236, guid: eaf4d38df4f7b4c4d8ada7d69889571d, type: 3}
+      propertyPath: m_Color.r
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3495040307594490236, guid: eaf4d38df4f7b4c4d8ada7d69889571d, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 79459efec17a4d00a321bdcc27bbc385, type: 2}
     - target: {fileID: 5216374068248314305, guid: eaf4d38df4f7b4c4d8ada7d69889571d, type: 3}
       propertyPath: m_Name
       value: Npc
+      objectReference: {fileID: 0}
+    - target: {fileID: 8283699636178997085, guid: eaf4d38df4f7b4c4d8ada7d69889571d, type: 3}
+      propertyPath: normalMaterial
+      value: 
+      objectReference: {fileID: 2100000, guid: 79459efec17a4d00a321bdcc27bbc385, type: 2}
+    - target: {fileID: 8283699636178997085, guid: eaf4d38df4f7b4c4d8ada7d69889571d, type: 3}
+      propertyPath: flippedMaterial
+      value: 
+      objectReference: {fileID: 2100000, guid: 79459efec17a4d00a321bdcc27bbc385, type: 2}
+    - target: {fileID: 8283699636178997085, guid: eaf4d38df4f7b4c4d8ada7d69889571d, type: 3}
+      propertyPath: normalTintColor.b
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8283699636178997085, guid: eaf4d38df4f7b4c4d8ada7d69889571d, type: 3}
+      propertyPath: normalTintColor.g
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8283699636178997085, guid: eaf4d38df4f7b4c4d8ada7d69889571d, type: 3}
+      propertyPath: normalTintColor.r
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8283699636178997085, guid: eaf4d38df4f7b4c4d8ada7d69889571d, type: 3}
+      propertyPath: flippedTintColor.b
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8283699636178997085, guid: eaf4d38df4f7b4c4d8ada7d69889571d, type: 3}
+      propertyPath: flippedTintColor.g
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8283699636178997085, guid: eaf4d38df4f7b4c4d8ada7d69889571d, type: 3}
+      propertyPath: flippedTintColor.r
+      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

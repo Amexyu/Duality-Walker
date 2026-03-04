@@ -58,7 +58,7 @@ SpriteRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: a97c105638bdf8b4a8650670310a4cd3, type: 2}
+  - {fileID: 2100000, guid: e73a58f6e2794ae7b1b7e50b7fb811b0, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -152,6 +152,10 @@ MonoBehaviour:
   forceCameraForward: 1
   cameraForwardSpeed: 3
   playerSortingOrder: 50
+  normalMaterial: {fileID: 0}
+  flippedMaterial: {fileID: 0}
+  normalTintColor: {r: 1, g: 1, b: 1, a: 1}
+  flippedTintColor: {r: 1, g: 1, b: 1, a: 1}
   animator: {fileID: 0}
   animSpeedXParam: SpeedX
   animSpeedYParam: SpeedY
@@ -195,11 +199,15 @@ MonoBehaviour:
   stopUiSceneName: GAMEOVER1
   disableTimeScaleOnStop: 1
   startMoveDelay: 0.02
+  distanceCountDelay: 1
   enterFromLeftOnStart: 1
   enterStartViewportX: 0.03
   enterRunSpeed: 5
   enterTargetOffsetX: 0
   lockCameraDuringEnter: 1
+  enableAutoFlip: 1
+  flipMinInterval: 8
+  flipMaxInterval: 16
 --- !u!61 &4224219333081594170
 BoxCollider2D:
   m_ObjectHideFlags: 0

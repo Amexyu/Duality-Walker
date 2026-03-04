@@ -1,13 +1,14 @@
-using UnityEngine;
+ï»¿using UnityEngine;
 
 public enum FeatureCellType
 {
     None,
-    Obstacle, // °×ÇøÖÐµÄºÚÕÏ°­
-    Pit       // ºÚÇøÖÐµÄ°×¿Ó
+    Obstacle, // ï¿½ï¿½ï¿½ï¿½ï¿½ÐµÄºï¿½ï¿½Ï°ï¿½
+    Pit       // ï¿½ï¿½ï¿½ï¿½ï¿½ÐµÄ°×¿ï¿½
 }
 
 public class FeatureCell : MonoBehaviour
 {
     public FeatureCellType cellType = FeatureCellType.None;
+    public bool isBlackBlock = true;
 }

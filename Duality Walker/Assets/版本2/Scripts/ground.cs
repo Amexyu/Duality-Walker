@@ -1,70 +1,70 @@
-using System.Collections.Generic;
+ï»¿using System.Collections.Generic;
 using UnityEngine;
 
 public class ground : MonoBehaviour
 {
-    [Header("Íæ¼Ò£¨¿É²»Ìî£¬×Ô¶¯ÕÒ BLACKMOVE£©")]
+    [Header("ï¿½ï¿½Ò£ï¿½ï¿½É²ï¿½ï¿½î£¬ï¿½Ô¶ï¿½ï¿½ï¿½ BLACKMOVEï¿½ï¿½")]
     [SerializeField] private Transform player;
 
-    [Header("»ù´¡Íø¸ñ")]
+    [Header("ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½")]
     [SerializeField] private float blockSize = 1f;
     [SerializeField] private float surfaceYOffset = 0f;
 
-    [Header("Éú³É·¶Î§")]
+    [Header("ï¿½ï¿½ï¿½É·ï¿½Î§")]
     [SerializeField] private int spawnAheadColumns = 50;
     [SerializeField] private int spawnBehindColumns = 15;
     [SerializeField] private int keepBehindColumns = 22;
 
-    [Header("ÉÏÏÂÌî³äÐÐÊý")]
+    [Header("ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½")]
     [SerializeField] private int whiteRowsAbove = 12;
     [SerializeField] private int blackRowsBelow = 14;
 
-    [Header("µØÐÎÌØÕ÷ÑÓ³Ù")]
+    [Header("ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ó³ï¿½")]
     [SerializeField] private float featureStartDelaySeconds = 5f;
     [SerializeField] private int featureStartSafeColumns = 12;
 
-    [Header("Í¹Æð£¨½öµØ±íÏß¸½½ü£©")]
+    [Header("Í¹ï¿½ð£¨½ï¿½ï¿½Ø±ï¿½ï¿½ß¸ï¿½ï¿½ï¿½ï¿½ï¿½")]
     [SerializeField] private float bumpChance = 0.16f;
 
-    [Header("°¼ÏÝ£¨½öµØ±íÏß¸½½ü£©")]
+    [Header("ï¿½ï¿½ï¿½Ý£ï¿½ï¿½ï¿½ï¿½Ø±ï¿½ï¿½ß¸ï¿½ï¿½ï¿½ï¿½ï¿½")]
     [SerializeField] private float dipChance = 0.14f;
 
-    [Header("µØÐÎ¼ä¸ô")]
+    [Header("ï¿½ï¿½ï¿½Î¼ï¿½ï¿½")]
     [SerializeField] private int minFlatColumnsBetweenFeatures = 3;
 
-    [Header("½»ÌæÎ¢µØÐÎ£¨1Í¹1°¼Ñ­»·£©")]
+    [Header("ï¿½ï¿½ï¿½ï¿½Î¢ï¿½ï¿½ï¿½Î£ï¿½1Í¹1ï¿½ï¿½Ñ­ï¿½ï¿½ï¿½ï¿½")]
     [SerializeField] private bool enableAlternatingMicroPattern = true;
     [SerializeField][Range(0f, 1f)] private float alternatingPatternChance = 0.08f;
     [SerializeField] private int alternatingPatternMinLength = 6;
     [SerializeField] private int alternatingPatternMaxLength = 14;
     [SerializeField] private bool alternatingPatternRandomStartType = true;
 
-    [Header("ÉãÏñ»úÄÚÇ°·½Í»·¢µØÐÎ£¨¸¨ÖúÏßÇ°·½£©")]
+    [Header("ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç°ï¿½ï¿½Í»ï¿½ï¿½ï¿½ï¿½ï¿½Î£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç°ï¿½ï¿½ï¿½ï¿½")]
     [SerializeField] private bool enableCameraFrontSurprise = true;
     [SerializeField][Range(0f, 1f)] private float cameraFrontSurpriseChance = 0.22f;
-    [SerializeField][Range(0f, 1f)] private float cameraFrontBumpRatio = 0.5f; // 0=È«°¼ÏÝ 1=È«Í¹Æð
+    [SerializeField][Range(0f, 1f)] private float cameraFrontBumpRatio = 0.5f; // 0=È«ï¿½ï¿½ï¿½ï¿½ 1=È«Í¹ï¿½ï¿½
     [SerializeField] private float assistLineViewportX = 0.5f;
     [SerializeField] private int cameraFrontStartOffsetColumns = 2;
     [SerializeField] private int cameraFrontRightPaddingColumns = 2;
 
-    [Header("ÌùµØÐÞÕý£¨ÓÃÓÚÏû³ý½ÇÉ«ÓëµØÃæÏ¸·ì£©")]
+    [Header("ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É«ï¿½ï¿½ï¿½ï¿½ï¿½Ï¸ï¿½ì£©")]
     [SerializeField] private float surfaceSnapTolerance = 0.01f;
 
-    [Header("äÖÈ¾·ìÏ¶ÐÞÕý£¨½öÊÓ¾õ£©")]
+    [Header("ï¿½ï¿½È¾ï¿½ï¿½Ï¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ó¾ï¿½ï¿½ï¿½")]
     [SerializeField] private float blockOverlap = 0.01f;
 
-    [Header("ºÏ³ÉÆ÷ÖØ½¨¼ä¸ô")]
+    [Header("ï¿½Ï³ï¿½ï¿½ï¿½ï¿½Ø½ï¿½ï¿½ï¿½ï¿½")]
     [SerializeField] private float compositeRebuildInterval = 0.08f;
 
-    [Header("²âÊÔÄ£Ê½£¨ÏÞÖÆÕÏ°­/¿ÓÐÎ×´£©")]
+    [Header("ï¿½ï¿½ï¿½ï¿½Ä£Ê½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï°ï¿½/ï¿½ï¿½ï¿½ï¿½×´ï¿½ï¿½")]
     [SerializeField] private bool testMode = true;
     [SerializeField] private int testObstacleShapeIndex = 0;
     [SerializeField] private int testPitShapeIndex = 0;
 
-    [Header("Çå³ýÓ³Éä")]
-    [SerializeField] private bool reverseClearMapping = true; // false: ºÚ->ÕÏ°­ °×->¿Ó£»true: ºÚ->¿Ó °×->ÕÏ°­
+    [Header("ï¿½ï¿½ï¿½Ó³ï¿½ï¿½")]
+    [SerializeField] private bool reverseClearMapping = true; // false: ï¿½ï¿½->ï¿½Ï°ï¿½ ï¿½ï¿½->ï¿½Ó£ï¿½true: ï¿½ï¿½->ï¿½ï¿½ ï¿½ï¿½->ï¿½Ï°ï¿½
 
-    [Header("ÌØÕ÷¿é±ß¿ò£¨ÕÏ°­/¿Ó/Ìî¿Ó£©")]
+    [Header("ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ß¿ï¿½ï¿½Ï°ï¿½/ï¿½ï¿½/ï¿½ï¿½Ó£ï¿½")]
     [SerializeField] private bool useFeatureCellBorder = true;
     [SerializeField] private float featureBorderScale = 1.1f;
     [SerializeField] private int featureBorderSortingOffset = -1;
@@ -72,14 +72,17 @@ public class ground : MonoBehaviour
     [SerializeField] private Color pitBorderColor = Color.black;
     [SerializeField] private Color filledPitBorderColor = Color.white;
 
-    [Header("ÕÏ°­Ìî²¹ÑÕÉ«½¥±ä")]
+    [Header("ï¿½Ï°ï¿½ï¿½î²¹ï¿½ï¿½É«ï¿½ï¿½ï¿½ï¿½")]
     [SerializeField] private bool useObstacleFillColorTransition = true;
     [SerializeField] private float obstacleFillColorTransitionDuration = 0.2f;
     [SerializeField] private bool fadeOutObstacleBorderOnFill = true;
 
-    [Header("¿ÓÌî²¹ÑÕÉ«½¥±ä")]
+    [Header("ï¿½ï¿½ï¿½î²¹ï¿½ï¿½É«ï¿½ï¿½ï¿½ï¿½")]
     [SerializeField] private bool usePitFillColorTransition = true;
     [SerializeField] private float pitFillColorTransitionDuration = 0.2f;
+
+    [Header("ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í¼ï¿½ï¿½ï¿½Ð»ï¿½")]
+    [SerializeField] private bool areaSwapped;
 
     private readonly Queue<ColumnRecord> spawnedColumns = new();
     private readonly Dictionary<int, GameObject> columnRoots = new();
@@ -175,7 +178,7 @@ public class ground : MonoBehaviour
 
         if (player == null)
         {
-            Debug.LogWarning("ground: Î´ÕÒµ½Íæ¼Ò£¬Çë°ó¶¨ player »ò±£Ö¤³¡¾°ÖÐÓÐ BLACKMOVE¡£");
+            Debug.LogWarning("ground: Î´ï¿½Òµï¿½ï¿½ï¿½Ò£ï¿½ï¿½ï¿½ï¿½ player ï¿½ï¿½Ö¤ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ BLACKMOVEï¿½ï¿½");
             enabled = false;
             return;
         }
@@ -318,13 +321,13 @@ public class ground : MonoBehaviour
         for (int y = baseSurfaceUnits - blackRowsBelow; y <= topBlackY; y++)
         {
             Vector3 pos = new(worldX, y * blockSize, 0f);
-            SpawnOrReplaceBlock(root.transform, pos, Color.black, true, "Black");
+            SpawnOrReplaceBlock(root.transform, pos, true, "Black");
         }
 
         for (int y = topBlackY + 1; y <= topBlackY + whiteRowsAbove; y++)
         {
             Vector3 pos = new(worldX, y * blockSize, 0f);
-            SpawnOrReplaceBlock(root.transform, pos, Color.white, false, "White");
+            SpawnOrReplaceBlock(root.transform, pos, false, "White");
         }
 
         if (activeAlternatingPattern)
@@ -489,12 +492,12 @@ public class ground : MonoBehaviour
         if (placeBump)
         {
             Vector3 bumpPos = new(worldX, (baseSurfaceUnits + 1) * blockSize, 0f);
-            SpawnOrReplaceBlock(root, bumpPos, Color.black, true, "Obstacle");
+            SpawnOrReplaceBlock(root, bumpPos, true, "Obstacle");
         }
         else
         {
             Vector3 pitPos = new(worldX, baseSurfaceUnits * blockSize, 0f);
-            SpawnOrReplaceBlock(root, pitPos, Color.white, false, "Pit");
+            SpawnOrReplaceBlock(root, pitPos, false, "Pit");
         }
     }
 
@@ -543,7 +546,7 @@ public class ground : MonoBehaviour
                     continue;
                 }
 
-                SpawnOrReplaceBlock(root, pos, Color.black, true, "Obstacle");
+                SpawnOrReplaceBlock(root, pos, true, "Obstacle");
             }
             else
             {
@@ -552,12 +555,12 @@ public class ground : MonoBehaviour
                     continue;
                 }
 
-                SpawnOrReplaceBlock(root, pos, Color.white, false, "Pit");
+                SpawnOrReplaceBlock(root, pos, false, "Pit");
             }
         }
     }
 
-    private void SpawnOrReplaceBlock(Transform parent, Vector3 worldPos, Color color, bool hasCollider, string namePrefix)
+    private void SpawnOrReplaceBlock(Transform parent, Vector3 worldPos, bool isBlackBlock, string namePrefix)
     {
         int xIndex = WorldXToCellIndex(worldPos.x);
         int yIndex = Mathf.RoundToInt(worldPos.y / blockSize);
@@ -587,10 +590,11 @@ public class ground : MonoBehaviour
 
         SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
         sr.sprite = runtimeSprite;
-        sr.color = color;
+        sr.color = isBlackBlock ? Color.black : Color.white;
         sr.sortingOrder = 0;
 
         FeatureCell marker = go.AddComponent<FeatureCell>();
+        marker.isBlackBlock = isBlackBlock;
         if (namePrefix == "Obstacle")
         {
             marker.cellType = FeatureCellType.Obstacle;
@@ -606,7 +610,7 @@ public class ground : MonoBehaviour
             marker.cellType = FeatureCellType.None;
         }
 
-        if (hasCollider)
+        if (ShouldHaveCollider(isBlackBlock))
         {
             BoxCollider2D col = go.AddComponent<BoxCollider2D>();
             col.compositeOperation = Collider2D.CompositeOperation.Merge;
@@ -724,6 +728,8 @@ public class ground : MonoBehaviour
 
     public float SurfaceY => baseSurfaceUnits * blockSize;
 
+    public float SplitY => baseSurfaceUnits * blockSize + blockSize * 0.5f;
+
     public bool TryClearFeatureCell(Vector3 worldPos, bool isBlackBlock)
     {
         Vector2Int key = MakeCellKey(worldPos.x, worldPos.y);
@@ -794,23 +800,27 @@ public class ground : MonoBehaviour
 
         FeatureCell marker = go.AddComponent<FeatureCell>();
         marker.cellType = FeatureCellType.None;
+        marker.isBlackBlock = true;
 
-        BoxCollider2D col = go.AddComponent<BoxCollider2D>();
-        col.compositeOperation = Collider2D.CompositeOperation.Merge;
-        col.isTrigger = false;
+        if (ShouldHaveCollider(marker.isBlackBlock))
+        {
+            BoxCollider2D col = go.AddComponent<BoxCollider2D>();
+            col.compositeOperation = Collider2D.CompositeOperation.Merge;
+            col.isTrigger = false;
+            colliderDirty = true;
+        }
 
         cellObjects[key] = go;
-        colliderDirty = true;
 
         if (usePitFillColorTransition)
         {
             StartCoroutine(AnimatePitFillToBlack(go, sr));
         }
 
-        TryLiftPlayerFromFilledPit(go.transform.position.y);
+        TryLiftPlayerFromFilledPit(go.transform.position);
     }
 
-    private void TryLiftPlayerFromFilledPit(float filledCellCenterY)
+    private void TryLiftPlayerFromFilledPit(Vector2 filledCellCenter)
     {
         if (player == null)
         {
@@ -824,23 +834,42 @@ public class ground : MonoBehaviour
             return;
         }
 
-        float cellTop = filledCellCenterY + blockSize * 0.5f;
-        float footY = playerCol.bounds.min.y;
+        float half = blockSize * 0.5f;
+        float cellMinX = filledCellCenter.x - half;
+        float cellMaxX = filledCellCenter.x + half;
+        Bounds playerBounds = playerCol.bounds;
 
-        if (footY >= cellTop)
+        if (playerBounds.max.x <= cellMinX || playerBounds.min.x >= cellMaxX)
         {
             return;
         }
 
-        float footOffset = player.position.y - footY;
+        bool inverted = playerRb != null && playerRb.gravityScale < 0f;
+        float cellFaceY = inverted ? filledCellCenter.y - half : filledCellCenter.y + half;
+        float playerEdgeY = inverted ? playerBounds.max.y : playerBounds.min.y;
+
+        if (inverted ? playerEdgeY <= cellFaceY : playerEdgeY >= cellFaceY)
+        {
+            return;
+        }
+
+        float edgeOffset = player.position.y - playerEdgeY;
         Vector3 p = player.position;
-        p.y = cellTop + footOffset + 0.02f;
+        p.y = cellFaceY + edgeOffset + (inverted ? -0.02f : 0.02f);
         player.position = p;
 
         if (playerRb != null)
         {
             Vector2 v = playerRb.linearVelocity;
-            if (v.y < 0f) v.y = 0f;
+            if (inverted)
+            {
+                if (v.y > 0f) v.y = 0f;
+            }
+            else
+            {
+                if (v.y < 0f) v.y = 0f;
+            }
+
             playerRb.linearVelocity = v;
         }
     }
@@ -860,6 +889,64 @@ public class ground : MonoBehaviour
     public int CurrentPitShapeIndex
     {
         get { return Mathf.Clamp(testPitShapeIndex, 0, PitShapes.Length - 1); }
+    }
+
+    public void SetAreaSwapped(bool swapped)
+    {
+        if (areaSwapped == swapped)
+        {
+            return;
+        }
+
+        areaSwapped = swapped;
+        RefreshAllCellColliders();
+    }
+
+    private void RefreshAllCellColliders()
+    {
+        bool changed = false;
+
+        foreach (var kv in cellObjects)
+        {
+            GameObject go = kv.Value;
+            if (go == null)
+            {
+                continue;
+            }
+
+            FeatureCell marker = go.GetComponent<FeatureCell>();
+            if (marker == null)
+            {
+                continue;
+            }
+
+            bool shouldHave = ShouldHaveCollider(marker.isBlackBlock);
+            Collider2D col = go.GetComponent<Collider2D>();
+
+            if (shouldHave && col == null)
+            {
+                BoxCollider2D newCol = go.AddComponent<BoxCollider2D>();
+                newCol.compositeOperation = Collider2D.CompositeOperation.Merge;
+                newCol.isTrigger = false;
+                changed = true;
+            }
+            else if (!shouldHave && col != null)
+            {
+                Destroy(col);
+                changed = true;
+            }
+        }
+
+        if (changed)
+        {
+            colliderDirty = true;
+            FlushCompositeGeometryIfDirty(true);
+        }
+    }
+
+    private bool ShouldHaveCollider(bool isBlackBlock)
+    {
+        return isBlackBlock ? !areaSwapped : areaSwapped;
     }
 
     private void TryApplyFeatureBorder(GameObject host, SpriteRenderer srcRenderer, Color borderColor)
@@ -907,6 +994,7 @@ public class ground : MonoBehaviour
         if (marker != null)
         {
             marker.cellType = FeatureCellType.None;
+            marker.isBlackBlock = false;
         }
 
         var col = obstacleCell.GetComponent<Collider2D>();
@@ -939,6 +1027,14 @@ public class ground : MonoBehaviour
             {
                 Destroy(border.gameObject);
             }
+        }
+
+        if (ShouldHaveCollider(false))
+        {
+            BoxCollider2D newCol = obstacleCell.AddComponent<BoxCollider2D>();
+            newCol.compositeOperation = Collider2D.CompositeOperation.Merge;
+            newCol.isTrigger = false;
+            colliderDirty = true;
         }
     }
 
