@@ -42,6 +42,6 @@ public class DistanceRecord : MonoBehaviour
 
     private void UpdateDistanceText(float distance)
     {
-        distanceText.text = prefix + distance.ToString("F2") + " m";
+        distanceText.text = prefix + distance.ToString("F1") + " m";
     }
 }
