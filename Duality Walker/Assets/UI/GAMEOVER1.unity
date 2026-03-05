@@ -1024,6 +1024,7 @@ MonoBehaviour:
   labelGraphic: {fileID: 1019114684}
   borderOutline: {fileID: 1010457383}
   forceDisableButtonTransition: 1
+  tintAllBackgroundGraphics: 1
   useAutoPreset: 1
   normalIsDark: 0
   showBorder: 1
@@ -1322,7 +1323,7 @@ MonoBehaviour:
     m_SelectOnDown: {fileID: 0}
     m_SelectOnLeft: {fileID: 0}
     m_SelectOnRight: {fileID: 0}
-  m_Transition: 1
+  m_Transition: 0
   m_Colors:
     m_NormalColor: {r: 0, g: 0, b: 0, a: 1}
     m_HighlightedColor: {r: 1, g: 1, b: 1, a: 1}
@@ -1416,6 +1417,7 @@ MonoBehaviour:
   labelGraphic: {fileID: 0}
   borderOutline: {fileID: 1258619969}
   forceDisableButtonTransition: 1
+  tintAllBackgroundGraphics: 1
   useAutoPreset: 1
   normalIsDark: 1
   showBorder: 1

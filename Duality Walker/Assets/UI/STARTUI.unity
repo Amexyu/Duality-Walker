@@ -1034,6 +1034,7 @@ MonoBehaviour:
   labelGraphic: {fileID: 1019114684}
   borderOutline: {fileID: 1010457383}
   forceDisableButtonTransition: 1
+  tintAllBackgroundGraphics: 1
   useAutoPreset: 1
   normalIsDark: 0
   showBorder: 1
@@ -1332,7 +1333,7 @@ MonoBehaviour:
     m_SelectOnDown: {fileID: 0}
     m_SelectOnLeft: {fileID: 0}
     m_SelectOnRight: {fileID: 0}
-  m_Transition: 1
+  m_Transition: 0
   m_Colors:
     m_NormalColor: {r: 0, g: 0, b: 0, a: 1}
     m_HighlightedColor: {r: 1, g: 1, b: 1, a: 1}
@@ -1408,7 +1409,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_EffectColor: {r: 1, g: 1, b: 1, a: 1}
-  m_EffectDistance: {x: 2, y: 2}
+  m_EffectDistance: {x: 2, y: -2}
   m_UseGraphicAlpha: 0
 --- !u!114 &1258619970
 MonoBehaviour:
@@ -1422,14 +1423,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6948bd55170888042966c971c9eda591, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  backgroundImage: {fileID: 0}
-  labelGraphic: {fileID: 0}
+  backgroundImage: {fileID: 1258619966}
+  labelGraphic: {fileID: 881434061}
   borderOutline: {fileID: 1258619969}
   forceDisableButtonTransition: 1
+  tintAllBackgroundGraphics: 1
   useAutoPreset: 1
   normalIsDark: 1
   showBorder: 1
-  borderThickness: {x: 2, y: 2}
+  borderThickness: {x: 2, y: -2}
   normalBackgroundColor: {r: 0, g: 0, b: 0, a: 1}
   hoverBackgroundColor: {r: 1, g: 1, b: 1, a: 1}
   normalTextColor: {r: 1, g: 1, b: 1, a: 1}

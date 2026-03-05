@@ -1,10 +1,11 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using TMPro;
 
 [DisallowMultipleComponent]
-public class UIButtonHoverInvert : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
+public class UIButtonHoverInvert : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IPointerDownHandler, IPointerUpHandler
 {
     [Header("引用")]
     [SerializeField] private Image backgroundImage;
@@ -13,6 +14,7 @@ public class UIButtonHoverInvert : MonoBehaviour, IPointerEnterHandler, IPointer
 
     [Header("按钮设置")]
     [SerializeField] private bool forceDisableButtonTransition = true;
+    [SerializeField] private bool tintAllBackgroundGraphics = true;
 
     [Header("自动配色")]
     [SerializeField] private bool useAutoPreset = true;
@@ -34,44 +36,44 @@ public class UIButtonHoverInvert : MonoBehaviour, IPointerEnterHandler, IPointer
     [SerializeField] private float transitionDuration = 0.2f;
     [SerializeField] private bool useUnscaledTime = true;
 
+    private readonly List<Graphic> backgroundGraphics = new List<Graphic>();
     private Coroutine transitionRoutine;
-
-    private void OnValidate()
-    {
-        ApplyAutoPresetIfNeeded();
-        EnsureBorderOutline();
-        ApplyBorderStyle();
-    }
+    private Button cachedButton;
 
     private void Awake()
     {
-        if (backgroundImage == null)
-        {
-            backgroundImage = GetComponent<Image>();
-        }
+        cachedButton = GetComponent<Button>();
 
         if (labelGraphic == null)
         {
             var tmp = GetComponentInChildren<TMP_Text>(true);
-            if (tmp != null)
+            if (tmp != null) labelGraphic = tmp;
+            else labelGraphic = GetComponentInChildren<Text>(true);
+        }
+
+        if (backgroundImage == null)
+        {
+            if (cachedButton != null && cachedButton.targetGraphic is Image targetImage)
             {
-                labelGraphic = tmp;
+                backgroundImage = targetImage;
             }
             else
             {
-                labelGraphic = GetComponentInChildren<Text>(true);
+                backgroundImage = GetComponent<Image>();
             }
         }
 
+        if (cachedButton != null && cachedButton.targetGraphic == null && backgroundImage != null)
+        {
+            cachedButton.targetGraphic = backgroundImage;
+        }
+
+        CollectBackgroundGraphics();
         EnsureBorderOutline();
 
-        if (forceDisableButtonTransition)
+        if (forceDisableButtonTransition && cachedButton != null)
         {
-            var button = GetComponent<Button>();
-            if (button != null)
-            {
-                button.transition = Selectable.Transition.None;
-            }
+            cachedButton.transition = Selectable.Transition.None;
         }
 
         ApplyAutoPresetIfNeeded();
@@ -79,37 +81,47 @@ public class UIButtonHoverInvert : MonoBehaviour, IPointerEnterHandler, IPointer
         ApplyInstant(false);
     }
 
-    public void OnPointerEnter(PointerEventData eventData)
+    private void CollectBackgroundGraphics()
     {
-        PlayTransition(true);
+        backgroundGraphics.Clear();
+
+        if (!tintAllBackgroundGraphics)
+        {
+            return;
+        }
+
+        Graphic[] graphics = GetComponentsInChildren<Graphic>(true);
+        for (int i = 0; i < graphics.Length; i++)
+        {
+            Graphic g = graphics[i];
+            if (g == null) continue;
+            if (g == labelGraphic) continue;
+            if (g is TMP_Text || g is Text) continue;
+
+            backgroundGraphics.Add(g);
+
+            if (backgroundImage == null && g is Image img)
+            {
+                backgroundImage = img;
+            }
+        }
     }
 
-    public void OnPointerExit(PointerEventData eventData)
-    {
-        PlayTransition(false);
-    }
+    public void OnPointerEnter(PointerEventData eventData) => PlayTransition(true);
+    public void OnPointerExit(PointerEventData eventData) => PlayTransition(false);
+    public void OnPointerDown(PointerEventData eventData) => PlayTransition(true);
+    public void OnPointerUp(PointerEventData eventData) => PlayTransition(false);
 
     private void EnsureBorderOutline()
     {
-        if (borderOutline == null)
-        {
-            borderOutline = GetComponent<Outline>();
-        }
-
-        if (borderOutline == null)
-        {
-            borderOutline = gameObject.AddComponent<Outline>();
-        }
-
+        if (borderOutline == null) borderOutline = GetComponent<Outline>();
+        if (borderOutline == null) borderOutline = gameObject.AddComponent<Outline>();
         borderOutline.useGraphicAlpha = false;
     }
 
     private void ApplyAutoPresetIfNeeded()
     {
-        if (!useAutoPreset)
-        {
-            return;
-        }
+        if (!useAutoPreset) return;
 
         if (normalIsDark)
         {
@@ -133,11 +145,7 @@ public class UIButtonHoverInvert : MonoBehaviour, IPointerEnterHandler, IPointer
 
     private void ApplyBorderStyle()
     {
-        if (borderOutline == null)
-        {
-            return;
-        }
-
+        if (borderOutline == null) return;
         borderOutline.enabled = showBorder;
         borderOutline.effectDistance = borderThickness;
         borderOutline.effectColor = normalBorderColor;
@@ -145,11 +153,7 @@ public class UIButtonHoverInvert : MonoBehaviour, IPointerEnterHandler, IPointer
 
     private void PlayTransition(bool hover)
     {
-        if (transitionRoutine != null)
-        {
-            StopCoroutine(transitionRoutine);
-        }
-
+        if (transitionRoutine != null) StopCoroutine(transitionRoutine);
         transitionRoutine = StartCoroutine(TransitionCoroutine(hover));
     }
 
@@ -173,14 +177,14 @@ public class UIButtonHoverInvert : MonoBehaviour, IPointerEnterHandler, IPointer
             t += dt;
             float p = Mathf.Clamp01(t / duration);
 
-            if (backgroundImage != null) backgroundImage.color = Color.Lerp(fromBg, toBg, p);
+            SetBackgroundColor(Color.Lerp(fromBg, toBg, p));
             if (labelGraphic != null) labelGraphic.color = Color.Lerp(fromText, toText, p);
             if (borderOutline != null && borderOutline.enabled) borderOutline.effectColor = Color.Lerp(fromBorder, toBorder, p);
 
             yield return null;
         }
 
-        if (backgroundImage != null) backgroundImage.color = toBg;
+        SetBackgroundColor(toBg);
         if (labelGraphic != null) labelGraphic.color = toText;
         if (borderOutline != null && borderOutline.enabled) borderOutline.effectColor = toBorder;
 
@@ -189,8 +193,26 @@ public class UIButtonHoverInvert : MonoBehaviour, IPointerEnterHandler, IPointer
 
     private void ApplyInstant(bool hover)
     {
-        if (backgroundImage != null) backgroundImage.color = hover ? hoverBackgroundColor : normalBackgroundColor;
+        SetBackgroundColor(hover ? hoverBackgroundColor : normalBackgroundColor);
         if (labelGraphic != null) labelGraphic.color = hover ? hoverTextColor : normalTextColor;
         if (borderOutline != null && borderOutline.enabled) borderOutline.effectColor = hover ? hoverBorderColor : normalBorderColor;
+    }
+
+    private void SetBackgroundColor(Color color)
+    {
+        if (backgroundImage != null) backgroundImage.color = color;
+
+        for (int i = 0; i < backgroundGraphics.Count; i++)
+        {
+            if (backgroundGraphics[i] != null)
+            {
+                backgroundGraphics[i].color = color;
+            }
+        }
+
+        if (cachedButton != null && cachedButton.targetGraphic != null && cachedButton.targetGraphic != backgroundImage)
+        {
+            cachedButton.targetGraphic.color = color;
+        }
     }
 }
